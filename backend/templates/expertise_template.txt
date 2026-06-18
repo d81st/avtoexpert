@@ -1,0 +1,74 @@
+ЗАКЛЮЧЕНИЕ ЭКСПЕРТА № {report_number}
+от {report_date}
+
+ЭКСПЕРТ: {expert_name}
+
+ДАТА ПОСТУПЛЕНИЯ ЗАЯВКИ: {application_date}
+
+=== ИДЕНТИФИКАЦИЯ АВТОМОБИЛЯ ===
+
+Модель: {car_model}
+Год выпуска: {car_year}
+Цвет: {car_color}
+Тип кузова: {body_type}
+Госномер: {license_plate}
+
+ВЛАДЕЛЕЦ:
+Ф.И.О.: {owner_name}
+Техпаспорт: {tech_passport}
+Место выдачи: {tech_passport_place}
+
+ТЕХНИЧЕСКИЕ ДАННЫЕ:
+Пробег: {mileage} км
+Статус одометра: {odometer_status}
+VIN-код: {vin_code}
+Номер двигателя: {engine_number}
+Тип трансмиссии: {transmission_type}
+
+=== РЫНОЧНАЯ СТОИМОСТЬ ===
+
+Статус производства: {production_status}
+
+АНАЛОГИ:
+Аналог 1: Пробег {analog1_mileage} км, Цена {analog1_price} сум
+Аналог 2: Пробег {analog2_mileage} км, Цена {analog2_price} сум
+Аналог 3: Пробег {analog3_mileage} км, Цена {analog3_price} сум
+
+Цена нового (с завода): {factory_price} сум
+% физического износа: {depreciation_pct}%
+
+РЫНОЧНАЯ СТОИМОСТЬ: {market_price} сум
+
+=== РЕМОНТНЫЕ РАБОТЫ ===
+
+Нормо-час: {hourly_rate} сум
+
+{#repair_works}
+- {part_name} ({part_type}, сложность {complexity}): {price} сум
+{/repair_works}
+
+=== ПОКРАСОЧНЫЕ РАБОТЫ ===
+
+{#paint_works}
+- {part_name}: покраска {paint_price} сум, полировка {polish_price} сум
+{/paint_works}
+
+=== ЗАПЧАСТИ ===
+
+{#spare_parts}
+- {name}: {qty} шт. × {price} сум = {qty * price} сум
+{/spare_parts}
+
+=== МАТЕРИАЛЫ ===
+
+{#materials}
+- {name}: {qty} шт. × {price} сум = {qty * price} сум
+{/materials}
+
+=== ИТОГОВАЯ СУММА ===
+
+Общая сумма: {grand_total} сум
+
+ЭКСПЕРТ: _________________ / {expert_name}
+
+ДАТА: _________________
