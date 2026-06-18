@@ -1,14 +1,14 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { useEffect, useState } from "react";
-import { useAuthStore } from "./store/useAuthStore";
-import { authService } from "./services/authService";
-import Login from "./pages/Login";
-import Dashboard from "./pages/Dashboard";
-import ReportPage from "./pages/ReportPage";
-import AdminPage from "./pages/AdminPage";
-import NotFound from "./pages/NotFound";
-import PrivateRoute from "./components/PrivateRoute";
-import ErrorBoundary from "./components/ErrorBoundary";
+import { useAuthStore } from "@/store/useAuthStore";
+import { authService } from "@/services/authService";
+import Login from "@/pages/Login";
+import Dashboard from "@/pages/Dashboard";
+import ReportPage from "@/pages/ReportPage";
+import AdminPage from "@/pages/AdminPage";
+import NotFound from "@/pages/NotFound";
+import PrivateRoute from "@/components/PrivateRoute";
+import ErrorBoundary from "@/components/ErrorBoundary";
 
 function App() {
   const { isAuthenticated, setAuth, logout } = useAuthStore();

@@ -1,11 +1,11 @@
 import { useEffect, useRef, useState } from "react";
-import { useReportStore } from "../store/useReportStore";
-import { useFormStore } from "../store/useFormStore";
-import { reportService } from "../services/reportService";
+import { useReportStore } from "@/store/useReportStore";
+import { useFormStore } from "@/store/useFormStore";
+import { expertService } from "@/services/expertService";
 
-import Input from "./Input";
-import Alert from "./Alert";
-import Button from "./Button";
+import Input from "@/components/Input";
+import Alert from "@/components/Alert";
+import Button from "@/components/Button";
 
 function Step1({
   onValidationChange,
@@ -67,7 +67,7 @@ function Step1({
 
   const fetchExperts = async () => {
     try {
-      const data = await reportService.getExperts();
+      const data = await expertService.getExperts();
       setExperts(data);
       setError(null);
     } catch (err) {
@@ -108,7 +108,7 @@ function Step1({
 
     setExpertError(null);
     try {
-      const expert = await reportService.createExpert(newExpertName.trim());
+      const expert = await expertService.createExpert(newExpertName.trim());
       setExperts([...experts, expert]);
       setExpertId(expert.id);
       setShowExpertModal(false);
@@ -126,7 +126,7 @@ function Step1({
 
     setExpertError(null);
     try {
-      const expert = await reportService.updateExpert(
+      const expert = await expertService.updateExpert(
         editingExpertId,
         newExpertName.trim(),
       );
@@ -142,7 +142,7 @@ function Step1({
     if (!confirm("Удалить этого эксперта?")) return;
 
     try {
-      await reportService.deleteExpert(id);
+      await expertService.deleteExpert(id);
       setExperts(experts.filter((e) => e.id !== id));
       if (expertId === id) setExpertId("");
     } catch (err) {

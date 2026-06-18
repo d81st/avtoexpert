@@ -1,19 +1,20 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { useFormStore } from "../store/useFormStore";
-import { useReportStore } from "../store/useReportStore";
-import { reportService } from "../services/reportService";
-import { debounce } from "../utils/debounce";
-import { normalizeReport } from "../utils/reportMapper";
-import Wizard from "../components/Wizard";
-import WizardNavigation from "../components/WizardNavigation";
-import Loader from "../components/Loader";
-import Alert from "../components/Alert";
-import Step1 from "../components/Step1";
-import Step2 from "../components/Step2";
-import Step3 from "../components/Step3";
-import Step4 from "../components/Step4";
-import Step5 from "../components/Step5";
+import { useFormStore } from "@/store/useFormStore";
+import { useReportStore } from "@/store/useReportStore";
+import { reportService } from "@/services/reportService";
+import { documentService } from "@/services/documentService";
+import { debounce } from "@/utils/debounce";
+import { normalizeReport } from "@/utils/reportMapper";
+import Wizard from "@/components/Wizard";
+import WizardNavigation from "@/components/WizardNavigation";
+import Loader from "@/components/Loader";
+import Alert from "@/components/Alert";
+import Step1 from "@/components/Step1";
+import Step2 from "@/components/Step2";
+import Step3 from "@/components/Step3";
+import Step4 from "@/components/Step4";
+import Step5 from "@/components/Step5";
 
 const TOTAL_STEPS = 5;
 
@@ -175,10 +176,10 @@ function ReportPage() {
         await reportService.updateStep5(currentReport.id, step5);
       }
 
-      const result = await reportService.finalizeAndGenerate(currentReport.id);
+      const result = await documentService.finalizeAndGenerate(currentReport.id);
       const filename =
         result.filename || `zaklyuchenie_${currentReport.report_number}.docx`;
-      await reportService.downloadDocument(result.download_url, filename);
+      await documentService.downloadDocument(result.download_url, filename);
 
       setGenerateSuccess(true);
       setTimeout(() => navigate("/"), 2000);

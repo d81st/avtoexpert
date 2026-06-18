@@ -1,16 +1,16 @@
 import { useEffect, useState } from 'react';
-import { useFormStore } from '../store/useFormStore';
-import type { Step2Data } from '../types';
+import { useFormStore } from '@/store/useFormStore';
+import type { Step2Data } from '@/types';
 import {
   BODY_TYPES,
   CAR_MODELS,
   TRANSMISSION_TYPES,
   ODOMETER_STATUSES,
   generateYearOptions,
-} from '../constants/reference';
-import FieldLabel from './FieldLabel';
-import Input from './Input';
-import Select from './Select';
+} from '@/constants/reference';
+import FieldLabel from '@/components/FieldLabel';
+import Input from '@/components/Input';
+import Select from '@/components/Select';
 
 const EMPTY_STEP2: Step2Data = {
   car_model: '',

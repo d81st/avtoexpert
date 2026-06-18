@@ -1,4 +1,4 @@
-import type { RepairWork, SparePart, Material, PaintWork } from '../types';
+import type { RepairWork, SparePart, Material, PaintWork } from '@/types';
 
 export const BT_COEFFICIENTS: Record<string, number> = {
   'BT-1': 1.0,

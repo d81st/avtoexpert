@@ -1,12 +1,12 @@
 import { useCallback, useEffect, useState } from 'react';
-import { useFormStore } from '../store/useFormStore';
-import { useReportStore } from '../store/useReportStore';
-import { reportService } from '../services/reportService';
-import type { ReportPhoto } from '../types';
-import { ACCEPTED_PHOTO_TYPES, MAX_PHOTOS } from '../constants/reference';
-import { calcGrandTotal, formatSum } from '../utils/calculations';
-import Alert from './Alert';
-import Button from './Button';
+import { useFormStore } from '@/store/useFormStore';
+import { useReportStore } from '@/store/useReportStore';
+import { photoService } from '@/services/photoService';
+import type { ReportPhoto } from '@/types';
+import { ACCEPTED_PHOTO_TYPES, MAX_PHOTOS } from '@/constants/reference';
+import { calcGrandTotal, formatSum } from '@/utils/calculations';
+import Alert from '@/components/Alert';
+import Button from '@/components/Button';
 
 interface Step5Props {
   onValidationChange: (isValid: boolean) => void;
@@ -33,7 +33,7 @@ function Step5({
   const loadPhotos = useCallback(async () => {
     if (!currentReport?.id) return;
     try {
-      const loaded = await reportService.getPhotos(currentReport.id);
+      const loaded = await photoService.getPhotos(currentReport.id);
       setPhotos(loaded);
       setStep5({ photos: loaded });
     } catch {
@@ -85,7 +85,7 @@ function Step5({
     setUploadError(null);
 
     try {
-      const uploaded = await reportService.uploadPhotos(currentReport.id, fileArray);
+      const uploaded = await photoService.uploadPhotos(currentReport.id, fileArray);
       const next = [...photos, ...uploaded];
       setPhotos(next);
       setStep5({ photos: next });
@@ -115,7 +115,7 @@ function Step5({
     if (!currentReport?.id) return;
 
     try {
-      await reportService.deletePhoto(currentReport.id, photo.id);
+      await photoService.deletePhoto(currentReport.id, photo.id);
       const next = photos.filter((p) => p.id !== photo.id);
       setPhotos(next);
       setStep5({ photos: next });

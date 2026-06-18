@@ -5,6 +5,7 @@
   "main": "dist/server.js",
   "scripts": {
     "dev": "tsx watch src/server.ts",
+    "dev:full": "npm run docker:db:up && npm run dev",
     "build": "tsc",
     "start": "node dist/server.js",
     "lint": "biome check .",

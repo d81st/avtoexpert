@@ -1,14 +1,14 @@
 import { useEffect, useState } from 'react';
-import { useFormStore } from '../store/useFormStore';
-import type { Step3Data } from '../types';
-import { DEPRECIATION_OPTIONS, PRODUCTION_STATUSES } from '../constants/reference';
+import { useFormStore } from '@/store/useFormStore';
+import type { Step3Data } from '@/types';
+import { DEPRECIATION_OPTIONS, PRODUCTION_STATUSES } from '@/constants/reference';
 import {
   calcAverageAnalogPrice,
   calcMarketPrice,
   formatSum,
-} from '../utils/calculations';
-import FieldLabel from './FieldLabel';
-import Input from './Input';
+} from '@/utils/calculations';
+import FieldLabel from '@/components/FieldLabel';
+import Input from '@/components/Input';
 
 const EMPTY_STEP3: Step3Data = {
   production_status: 'В производстве',

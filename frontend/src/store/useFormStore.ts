@@ -1,12 +1,12 @@
 import { create } from 'zustand';
-import type { Step1Data, Step2Data, Step3Data, Step4Data, Step5Data } from '../types';
+import type { Step1Data, Step2Data, Step3Data, Step4Data, Step5Data } from '@/types';
 import {
   hydrateFormFromReport,
   mapReportToStep1,
   mapReportToStep2,
   mapReportToStep3,
   mapReportToStep4,
-} from '../utils/reportMapper';
+} from '@/utils/reportMapper';
 
 interface FormState {
   currentStep: number;

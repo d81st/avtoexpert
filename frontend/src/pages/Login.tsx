@@ -1,12 +1,12 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useAuthStore } from "../store/useAuthStore";
-import { authService } from "../services/authService";
+import { useAuthStore } from "@/store/useAuthStore";
+import { authService } from "@/services/authService";
 import { AxiosError } from "axios";
-import Card from "../components/Card";
-import Input from "../components/Input";
-import Button from "../components/Button";
-import Alert from "../components/Alert";
+import Card from "@/components/Card";
+import Input from "@/components/Input";
+import Button from "@/components/Button";
+import Alert from "@/components/Alert";
 
 function Login() {
   const [login, setLogin] = useState("");

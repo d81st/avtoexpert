@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import type { Report, Expert } from "../types";
+import type { Report, Expert } from "@/types";
 
 interface PaginationInfo {
   page: number;

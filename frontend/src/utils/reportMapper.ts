@@ -10,7 +10,7 @@ import type {
   SparePart,
   Material,
   ReportPhoto,
-} from '../types';
+} from '@/types';
 
 function field<T>(obj: Record<string, unknown>, snake: string, camel: string): T | undefined {
   return (obj[snake] ?? obj[camel]) as T | undefined;

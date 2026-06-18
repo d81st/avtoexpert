@@ -1,11 +1,9 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { fileURLToPath } from 'node:url';
 import Docxtemplater from 'docxtemplater';
 import PizZip from 'pizzip';
+import { env } from '../../config/env.js';
 import { logger } from '../../shared/logger/logger.js';
-
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 interface ReportData {
   expertName: string;
@@ -48,8 +46,8 @@ export class DocGenerator {
 
   constructor() {
     this.templatePath = path.join(
-      __dirname,
-      '../../../templates/expertise.docx',
+      env.TEMPLATE_DIR,
+      'expertise.docx',
     );
   }
 

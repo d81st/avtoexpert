@@ -1,15 +1,15 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useAuthStore } from "../store/useAuthStore";
-import { useReportStore } from "../store/useReportStore";
+import { useAuthStore } from "@/store/useAuthStore";
+import { useReportStore } from "@/store/useReportStore";
 import {
   reportService,
   type ReportsQueryParams,
-} from "../services/reportService";
-import Loader from "../components/Loader";
-import Button from "../components/Button";
-import Alert from "../components/Alert";
-import Card from "../components/Card";
+} from "@/services/reportService";
+import Loader from "@/components/Loader";
+import Button from "@/components/Button";
+import Alert from "@/components/Alert";
+import Card from "@/components/Card";
 
 function Dashboard() {
   const navigate = useNavigate();

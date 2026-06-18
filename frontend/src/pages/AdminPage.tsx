@@ -1,11 +1,11 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useAuthStore } from "../store/useAuthStore";
-import { reportService } from "../services/reportService";
-import Loader from "../components/Loader";
-import Button from "../components/Button";
-import Alert from "../components/Alert";
-import Card from "../components/Card";
+import { useAuthStore } from "@/store/useAuthStore";
+import { adminService } from "@/services/adminService";
+import Loader from "@/components/Loader";
+import Button from "@/components/Button";
+import Alert from "@/components/Alert";
+import Card from "@/components/Card";
 
 interface AdminReport {
   id: string;
@@ -84,7 +84,7 @@ function AdminPage() {
     setIsLoading(true);
     setError(null);
     try {
-      const response = await reportService.getAllReports({
+      const response = await adminService.getAllReports({
         page: currentPage,
         search: search || searchQuery || undefined,
         limit: 20,
@@ -102,7 +102,7 @@ function AdminPage() {
     setIsLoading(true);
     setError(null);
     try {
-      const data = await reportService.getAllCreators();
+      const data = await adminService.getAllCreators();
       setCreators(data);
     } catch (err) {
       setError((err as Error).message || "Ошибка загрузки");
@@ -115,7 +115,7 @@ function AdminPage() {
     setIsLoading(true);
     setError(null);
     try {
-      const data = await reportService.getTemplateInfo();
+      const data = await adminService.getTemplateInfo();
       setTemplateInfo(data);
     } catch (err) {
       setError((err as Error).message || "Ошибка загрузки");

@@ -1,15 +1,15 @@
 import { useEffect, useState } from 'react';
-import { useFormStore } from '../store/useFormStore';
-import type { RepairWork, PaintWork, SparePart, Material } from '../types';
+import { useFormStore } from '@/store/useFormStore';
+import type { RepairWork, PaintWork, SparePart, Material } from '@/types';
 import {
   COMPLEXITY_OPTIONS,
   PART_TYPES,
   REPAIR_PART_NAMES,
-} from '../constants/reference';
-import { calcRepairWorkPrice } from '../utils/calculations';
-import FieldLabel from './FieldLabel';
-import Input from './Input';
-import Button from './Button';
+} from '@/constants/reference';
+import { calcRepairWorkPrice } from '@/utils/calculations';
+import FieldLabel from '@/components/FieldLabel';
+import Input from '@/components/Input';
+import Button from '@/components/Button';
 
 function Step4({ onValidationChange }: { onValidationChange: (isValid: boolean) => void }) {
   const { step4, setStep4 } = useFormStore();
