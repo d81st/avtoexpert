@@ -16,6 +16,7 @@ function Login() {
     handleSubmit,
     formState: { errors },
   } = useForm<LoginPayload>({
+    mode: "onBlur",
     defaultValues: {
       login: "",
       password: "",
@@ -31,20 +32,20 @@ function Login() {
   const errorMessage =
     loginMutation.error instanceof Error
       ? loginMutation.error.message
-      : "РќРµРІРµСЂРЅС‹Р№ Р»РѕРіРёРЅ РёР»Рё РїР°СЂРѕР»СЊ";
+      : "Неверный логин или пароль";
 
   return (
     <div className="app-shell flex min-h-screen items-center justify-center p-4">
       <Card className="w-full max-w-md rounded-3xl">
         <div className="mb-6 text-center">
           <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 text-2xl text-white shadow-md">
-            рџљ—
+            🚗
           </div>
           <h1 className="brand-title text-3xl font-bold text-slate-900">
             AvtoExpert Pro
           </h1>
           <p className="page-subtitle mt-1 text-sm">
-            РЎРёСЃС‚РµРјР° СЌРєСЃРїРµСЂС‚РёР·С‹ Р°РІС‚РѕРјРѕР±РёР»РµР№
+            Система экспертизы автомобилей
           </p>
         </div>
 
@@ -60,12 +61,12 @@ function Login() {
           <Input
             type="text"
             id="login"
-            label="Р›РѕРіРёРЅ"
+            label="Логин"
             error={errors.login?.message}
             disabled={loginMutation.isPending}
             {...register("login", {
               required:
-                "Р›РѕРіРёРЅ Рё РїР°СЂРѕР»СЊ РЅРµ РјРѕРіСѓС‚ Р±С‹С‚СЊ РїСѓСЃС‚С‹РјРё",
+                "Логин и пароль не могут быть пустыми",
               setValueAs: (value) => value.trim(),
             })}
           />
@@ -73,12 +74,12 @@ function Login() {
           <Input
             type="password"
             id="password"
-            label="РџР°СЂРѕР»СЊ"
+            label="Пароль"
             error={errors.password?.message}
             disabled={loginMutation.isPending}
             {...register("password", {
               required:
-                "Р›РѕРіРёРЅ Рё РїР°СЂРѕР»СЊ РЅРµ РјРѕРіСѓС‚ Р±С‹С‚СЊ РїСѓСЃС‚С‹РјРё",
+                "Логин и пароль не могут быть пустыми",
               setValueAs: (value) => value.trim(),
             })}
           />
@@ -90,8 +91,8 @@ function Login() {
             fullWidth
           >
             {loginMutation.isPending
-              ? "Р’С…РѕРґ РІ СЃРёСЃС‚РµРјСѓ..."
-              : "Р’РѕР№С‚Рё"}
+              ? "Вход в систему..."
+              : "Войти"}
           </Button>
         </form>
       </Card>

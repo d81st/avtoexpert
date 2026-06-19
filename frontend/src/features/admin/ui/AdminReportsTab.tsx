@@ -41,38 +41,42 @@ export default function AdminReportsTab() {
     setSearchQuery("");
   };
 
+  if (reportsQuery.isLoading) {
+    return <Loader message="Загрузка заключений..." />;
+  }
+
+  if (error) {
+    return (
+      <Alert
+        type="error"
+        message={error}
+        onClose={() => void reportsQuery.refetch()}
+      />
+    );
+  }
+
   return (
     <>
       <form onSubmit={onSearch} className="mb-6 flex flex-col gap-2 sm:flex-row">
         <input
           type="text"
-          placeholder="РџРѕРёСЃРє РїРѕ РЅРѕРјРµСЂСѓ, РіРѕСЃРЅРѕРјРµСЂСѓ, РІР»Р°РґРµР»СЊС†Сѓ..."
+          placeholder="Поиск по номеру, госномеру, владельцу..."
           className="form-control flex-1 px-4 py-3"
           {...register("search")}
         />
         <Button type="submit" variant="secondary" isLoading={reportsQuery.isFetching}>
-          РќР°Р№С‚Рё
+          Найти
         </Button>
         {searchQuery && (
           <Button type="button" variant="secondary" onClick={handleClearSearch}>
-            РЎР±СЂРѕСЃРёС‚СЊ
+            Сбросить
           </Button>
         )}
       </form>
 
-      {error && (
-        <Alert
-          type="error"
-          message={error}
-          onClose={() => void reportsQuery.refetch()}
-        />
-      )}
-
-      {reportsQuery.isLoading ? (
-        <Loader message="Р—Р°РіСЂСѓР·РєР° Р·Р°РєР»СЋС‡РµРЅРёР№..." />
-      ) : reports.length === 0 ? (
+      {reports.length === 0 ? (
         <Card className="text-center">
-          <p className="text-gray-500">Р—Р°РєР»СЋС‡РµРЅРёСЏ РЅРµ РЅР°Р№РґРµРЅС‹</p>
+          <p className="text-gray-500">Заключения не найдены</p>
         </Card>
       ) : (
         <>
@@ -80,14 +84,14 @@ export default function AdminReportsTab() {
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">в„–</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Р”Р°С‚Р°</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">РЎС‚Р°С‚СѓСЃ</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">РџСЂРѕРіСЂРµСЃСЃ</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Р“РѕСЃРЅРѕРјРµСЂ</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Р’Р»Р°РґРµР»РµС†</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">РЎСѓРјРјР°</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Р”РµР№СЃС‚РІРёСЏ</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">№</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Дата</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Статус</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Прогресс</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Госномер</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Владелец</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Сумма</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Действия</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
@@ -119,7 +123,7 @@ export default function AdminReportsTab() {
                         onClick={() => navigate(`/report/${report.id}`)}
                         className="text-blue-600 hover:text-blue-900 text-sm"
                       >
-                        РћС‚РєСЂС‹С‚СЊ
+                        Открыть
                       </button>
                     </td>
                   </tr>
@@ -136,10 +140,10 @@ export default function AdminReportsTab() {
                 disabled={currentPage <= 1}
                 onClick={() => setCurrentPage((page) => page - 1)}
               >
-                в†ђ
+                ←
               </Button>
               <span className="px-4 py-2 text-sm text-gray-600">
-                {currentPage} РёР· {pagination.totalPages}
+                {currentPage} из {pagination.totalPages}
               </span>
               <Button
                 variant="secondary"
@@ -147,7 +151,7 @@ export default function AdminReportsTab() {
                 disabled={currentPage >= pagination.totalPages}
                 onClick={() => setCurrentPage((page) => page + 1)}
               >
-                в†’
+                →
               </Button>
             </div>
           )}

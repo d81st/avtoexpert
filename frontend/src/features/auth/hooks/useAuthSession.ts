@@ -2,7 +2,12 @@ import { useQuery } from "@tanstack/react-query";
 import { authService } from "../api/authApi";
 import { useAuthStore } from "@/shared/auth/useAuthStore";
 
-export function useAuthSession() {
+export interface UseAuthSessionReturn {
+  isAuthenticated: boolean;
+  isInitializing: boolean;
+}
+
+export function useAuthSession(): UseAuthSessionReturn {
   const token = useAuthStore((state) => state.token);
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const setAuth = useAuthStore((state) => state.setAuth);

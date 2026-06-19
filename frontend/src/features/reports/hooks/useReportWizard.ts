@@ -1,141 +1,96 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import type { UseQueryResult, UseMutationResult } from "@tanstack/react-query";
 import { useFormStore } from "../model/useFormStore";
-import { useReportStore } from "../model/useReportStore";
+import {
+  useReportDetailQuery,
+  reportQueryKeys,
+} from "../model/reportQueries";
+import {
+  useUpdateStep2Mutation,
+  useUpdateStep3Mutation,
+  useUpdateStep4Mutation,
+  useUpdateStep5Mutation,
+} from "../model/reportQueries";
 import { reportService } from "../api/reportApi";
-import { normalizeReport } from "../lib/reportMapper";
+import type {
+  Report,
+  Step1Data,
+  Step2Data,
+  Step3Data,
+  Step4Data,
+  Step5Data,
+} from "../types";
 
 interface UseReportWizardParams {
   id?: string;
 }
 
-export function useReportWizard({ id }: UseReportWizardParams) {
+export interface UseReportWizardReturn {
+  currentStep: number;
+  reportQuery: UseQueryResult<Record<string, unknown>, Error>;
+  createMutation: UseMutationResult<Report, Error, Step1Data, unknown>;
+  saveStep2Mutation: UseMutationResult<void, Error, Step2Data, unknown>;
+  saveStep3Mutation: UseMutationResult<void, Error, Step3Data, unknown>;
+  saveStep4Mutation: UseMutationResult<void, Error, Step4Data, unknown>;
+  saveStep5Mutation: UseMutationResult<void, Error, Step5Data, unknown>;
+  handleNext: () => void;
+  handlePrevious: () => void;
+}
+
+export function useReportWizard({ id }: UseReportWizardParams): UseReportWizardReturn {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const { currentStep, setCurrentStep, hydrateFromReport } = useFormStore();
 
-  const {
-    currentStep,
-    setCurrentStep,
-    step1,
-    step2,
-    step3,
-    step4,
-    step5,
-    resetForm,
-    hydrateFromReport,
-  } = useFormStore();
+  // Load report data via useQuery (instead of useEffect + fetchReport)
+  const reportQuery = useReportDetailQuery(id);
 
-  const { currentReport, setCurrentReport, setLoading, setError } =
-    useReportStore();
-
-  const justCreatedRef = useRef(false);
-  const [saveError, setSaveError] = useState<string | null>(null);
-
-  const fetchReport = useCallback(
-    async (reportId: string) => {
-      setLoading(true);
-      try {
-        const raw = await reportService.getReport(reportId);
-        const report = normalizeReport(raw);
-        setCurrentReport(report);
-        hydrateFromReport(raw);
-        setCurrentStep(Math.max(report.current_step, 1));
-      } catch {
-        setError("Ошибка загрузки заключения");
-        navigate("/");
-      } finally {
-        setLoading(false);
-      }
-    },
-    [navigate, setLoading, setError, setCurrentReport, hydrateFromReport, setCurrentStep],
-  );
-
+  // Hydrate form when data arrives
   useEffect(() => {
-    if (id) {
-      if (justCreatedRef.current) {
-        justCreatedRef.current = false;
-        return;
-      }
-      fetchReport(id);
-    } else {
-      resetForm();
+    if (reportQuery.data) {
+      hydrateFromReport(reportQuery.data);
+      const step = (reportQuery.data as { current_step?: number }).current_step ?? 1;
+      setCurrentStep(Math.max(step, 1));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id]);
+  }, [reportQuery.data]);
 
-  const handleNext = useCallback(
-    async (isValid: boolean) => {
-      if (!isValid) return;
-      setSaveError(null);
-
-      if (currentStep === 1 && step1) {
-        try {
-          const report = await reportService.createReport(step1);
-          justCreatedRef.current = true;
-          setCurrentReport(report);
-          hydrateFromReport({ ...report, expertId: step1.expert_id });
-          setCurrentStep(2);
-          navigate(`/report/${report.id}`);
-        } catch (err) {
-          setSaveError(
-            (err as Error).message || "Ошибка создания черновика",
-          );
-        }
-        return;
-      }
-
-      if (!currentReport?.id) return;
-
-      try {
-        switch (currentStep) {
-          case 2:
-            if (step2) await reportService.updateStep2(currentReport.id, step2);
-            break;
-          case 3:
-            if (step3) await reportService.updateStep3(currentReport.id, step3);
-            break;
-          case 4:
-            if (step4) await reportService.updateStep4(currentReport.id, step4);
-            break;
-          case 5:
-            if (step5) await reportService.updateStep5(currentReport.id, step5);
-            break;
-        }
-
-        if (currentStep < 5) {
-          setCurrentStep(currentStep + 1);
-        }
-      } catch (err) {
-        setSaveError((err as Error).message || "Ошибка сохранения шага");
-      }
+  // Create report mutation with navigation onSuccess
+  const createMutation = useMutation({
+    mutationFn: (data: Step1Data) => reportService.createReport(data),
+    onSuccess: (report) => {
+      void queryClient.invalidateQueries({ queryKey: reportQueryKeys.lists() });
+      setCurrentStep(2);
+      navigate(`/report/${report.id}`);
     },
-    [
-      currentStep,
-      step1,
-      step2,
-      step3,
-      step4,
-      step5,
-      currentReport,
-      navigate,
-      setCurrentReport,
-      setCurrentStep,
-      hydrateFromReport,
-    ],
-  );
+  });
 
-  const handlePrevious = useCallback(() => {
-    if (currentStep > 1) {
-      setCurrentStep(currentStep - 1);
-    }
-  }, [currentStep, setCurrentStep]);
+  // Separate mutations for each step
+  const saveStep2Mutation = useUpdateStep2Mutation(id ?? "");
+  const saveStep3Mutation = useUpdateStep3Mutation(id ?? "");
+  const saveStep4Mutation = useUpdateStep4Mutation(id ?? "");
+  const saveStep5Mutation = useUpdateStep5Mutation(id ?? "");
+
+  // Navigation without API calls
+  const handleNext = () => {
+    if (currentStep < 5) setCurrentStep(currentStep + 1);
+  };
+
+  const handlePrevious = () => {
+    if (currentStep > 1) setCurrentStep(currentStep - 1);
+  };
 
   return {
     currentStep,
-    currentReport,
-    fetchReport,
+    reportQuery,
+    createMutation,
+    saveStep2Mutation,
+    saveStep3Mutation,
+    saveStep4Mutation,
+    saveStep5Mutation,
     handleNext,
     handlePrevious,
-    saveError,
-    setSaveError,
   };
 }

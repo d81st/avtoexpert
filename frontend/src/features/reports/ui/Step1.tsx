@@ -2,7 +2,7 @@ import { useEffect } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import { useFormStore } from "../model/useFormStore";
 import { useExperts } from "../hooks/useExperts";
-import { validateStep1 } from "../lib/validators";
+import { useValidationSync } from "../hooks/useValidationSync";
 import type { Step1Data } from "../types";
 import Alert from "@/shared/ui/Alert";
 import ExpertManagerModal from "./ExpertManagerModal";
@@ -15,22 +15,25 @@ const EMPTY_STEP1: Step1Data = {
   application_date: "",
 };
 
-function Step1({
-  onValidationChange,
-}: {
+interface StepFormProps {
   onValidationChange: (isValid: boolean) => void;
-}) {
-  const { step1, setStep1 } = useFormStore();
+}
+
+function Step1({ onValidationChange }: StepFormProps) {
+  const step1Data = useFormStore((s) => s.step1);
+  const setStep1 = useFormStore((s) => s.setStep1);
+
   const {
     register,
     setValue,
     control,
-    formState: { touchedFields, errors },
+    formState: { isValid, touchedFields, errors },
   } = useForm<Step1Data>({
     mode: "onBlur",
-    defaultValues: step1 ?? EMPTY_STEP1,
+    defaultValues: step1Data ?? EMPTY_STEP1,
   });
-  const formData = useWatch({ control }) as Step1Data;
+
+  const watchedValues = useWatch({ control }) as Step1Data;
 
   const {
     experts,
@@ -50,7 +53,7 @@ function Step1({
     handleDeleteExpert,
     openEditExpert,
   } = useExperts({
-    selectedExpertId: formData.expert_id,
+    selectedExpertId: watchedValues.expert_id,
     onSelectExpert: (id) =>
       setValue("expert_id", id, {
         shouldDirty: true,
@@ -59,20 +62,24 @@ function Step1({
       }),
   });
 
+  // Sync form data with FormStore
   useEffect(() => {
-    const nextData = { ...EMPTY_STEP1, ...formData };
-    setStep1(nextData);
-    onValidationChange(validateStep1(nextData));
-  }, [formData, onValidationChange, setStep1]);
+    if (watchedValues && Object.keys(watchedValues).length > 0) {
+      setStep1({ ...EMPTY_STEP1, ...watchedValues });
+    }
+  }, [watchedValues, setStep1]);
+
+  // Sync validation state via formState.isValid subscription
+  useValidationSync(isValid, onValidationChange);
 
   return (
     <div>
       <div className="mb-6">
         <h2 className="text-2xl font-bold text-gray-800">
-          РЁР°Рі 1: РћСЃРЅРѕРІРЅР°СЏ РёРЅС„РѕСЂРјР°С†РёСЏ
+          Шаг 1: Основная информация
         </h2>
         <p className="text-sm text-gray-600 mt-2">
-          РЈРєР°Р¶РёС‚Рµ РѕСЃРЅРѕРІРЅС‹Рµ РґР°РЅРЅС‹Рµ РґР»СЏ Р·Р°РєР»СЋС‡РµРЅРёСЏ РѕР± СЌРєСЃРїРµСЂС‚РёР·Рµ
+          Укажите основные данные для заключения об экспертизе
         </p>
       </div>
 
@@ -87,14 +94,14 @@ function Step1({
               htmlFor="expert"
               className="block text-sm font-medium text-gray-700"
             >
-              Р­РєСЃРїРµСЂС‚ <span className="text-red-500">*</span>
+              Эксперт <span className="text-red-500">*</span>
             </label>
             <button
               type="button"
               onClick={openExpertModal}
               className="text-sm text-blue-600 hover:text-blue-800"
             >
-              + Р”РѕР±Р°РІРёС‚СЊ СЌРєСЃРїРµСЂС‚Р°
+              + Добавить эксперта
             </button>
           </div>
           <select
@@ -106,10 +113,10 @@ function Step1({
                 : "border-gray-300"
             } disabled:opacity-50 disabled:cursor-not-allowed`}
             {...register("expert_id", {
-              required: "Р’С‹Р±РµСЂРёС‚Рµ СЌРєСЃРїРµСЂС‚Р°",
+              required: "Выберите эксперта",
             })}
           >
-            <option value="">Р’С‹Р±РµСЂРёС‚Рµ СЌРєСЃРїРµСЂС‚Р° РёР· СЃРїРёСЃРєР°</option>
+            <option value="">Выберите эксперта из списка</option>
             {experts.map((expert) => (
               <option key={expert.id} value={expert.id}>
                 {expert.full_name}
@@ -126,30 +133,30 @@ function Step1({
         <Input
           type="text"
           id="reportNumber"
-          label="РќРѕРјРµСЂ Р·Р°РєР»СЋС‡РµРЅРёСЏ"
+          label="Номер заключения"
           error={touchedFields.report_number ? errors.report_number?.message : undefined}
-          placeholder="РќР°РїСЂРёРјРµСЂ: 2024-001"
+          placeholder="Например: 2024-001"
           required
           {...register("report_number", {
-            required: "Р’РІРµРґРёС‚Рµ РЅРѕРјРµСЂ Р·Р°РєР»СЋС‡РµРЅРёСЏ",
+            required: "Введите номер заключения",
           })}
         />
 
         <Input
           type="date"
           id="reportDate"
-          label="Р”Р°С‚Р° Р·Р°РєР»СЋС‡РµРЅРёСЏ"
+          label="Дата заключения"
           error={touchedFields.report_date ? errors.report_date?.message : undefined}
           required
           {...register("report_date", {
-            required: "Р’С‹Р±РµСЂРёС‚Рµ РґР°С‚Сѓ Р·Р°РєСЋС‡РµРЅРёСЏ",
+            required: "Выберите дату заключения",
           })}
         />
 
         <Input
           type="date"
           id="applicationDate"
-          label="Р”Р°С‚Р° РїРѕРґР°С‡Рё Р·Р°СЏРІРєРё"
+          label="Дата подачи заявки"
           error={
             touchedFields.application_date
               ? errors.application_date?.message
@@ -157,7 +164,7 @@ function Step1({
           }
           required
           {...register("application_date", {
-            required: "Р’С‹Р±РµСЂРёС‚Рµ РґР°С‚Сѓ РїРѕРґР°С‡Рё Р·Р°СЏРІРєРё",
+            required: "Выберите дату подачи заявки",
           })}
         />
       </div>

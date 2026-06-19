@@ -3,7 +3,8 @@ import { useParams, useNavigate } from "react-router-dom";
 import { useReportWizard } from "../hooks/useReportWizard";
 import { useReportAutosave } from "../hooks/useReportAutosave";
 import { useReportFinalize } from "../hooks/useReportFinalize";
-import { useReportStore } from "../model/useReportStore";
+import { useWizardStepSave } from "../hooks/useWizardStepSave";
+import { normalizeReport } from "../lib/reportMapper";
 import Wizard from "./Wizard";
 import WizardNavigation from "./WizardNavigation";
 import Loader from "@/shared/ui/Loader";
@@ -19,20 +20,20 @@ const TOTAL_STEPS = 5;
 function ReportPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { isLoading, error, setError } = useReportStore();
   const [isValid, setIsValid] = useState(false);
 
-  const {
-    currentStep,
-    currentReport,
-    handleNext,
-    handlePrevious,
-    saveError,
-    setSaveError,
-  } = useReportWizard({ id });
+  const wizard = useReportWizard({ id });
+  const { currentStep, reportQuery, handlePrevious } = wizard;
+
+  const { handleSaveAndNext, mutationError, resetErrors } = useWizardStepSave({
+    wizard,
+    isValid,
+  });
+
+  const currentReport = reportQuery.data ? normalizeReport(reportQuery.data) : undefined;
 
   const { isSaving } = useReportAutosave({
-    reportId: currentReport?.id,
+    reportId: currentReport?.id ?? id,
     currentStep,
   });
 
@@ -42,8 +43,16 @@ function ReportPage() {
     generateSuccess,
     handleFinalize,
   } = useReportFinalize({
-    reportId: currentReport?.id,
+    reportId: currentReport?.id ?? id,
   });
+
+  if (reportQuery.isLoading) {
+    return <Loader message="Загрузка заключения..." />;
+  }
+
+  if (reportQuery.isError && !reportQuery.data) {
+    return <Alert type="error" message={reportQuery.error?.message || "Ошибка загрузки заключения"} />;
+  }
 
   const renderStep = () => {
     switch (currentStep) {
@@ -70,10 +79,6 @@ function ReportPage() {
     }
   };
 
-  if (isLoading) {
-    return <Loader message="Загрузка заключения..." />;
-  }
-
   return (
     <div className="app-shell py-8">
       <div className="max-w-4xl mx-auto px-4">
@@ -96,15 +101,12 @@ function ReportPage() {
           </button>
         </div>
 
-        {(saveError || error) && (
+        {(mutationError || reportQuery.error) && (
           <div className="mb-4">
             <Alert
               type="error"
-              message={saveError || error || ""}
-              onClose={() => {
-                setSaveError(null);
-                setError(null);
-              }}
+              message={mutationError || reportQuery.error?.message || ""}
+              onClose={resetErrors}
             />
           </div>
         )}
@@ -114,7 +116,7 @@ function ReportPage() {
 
           {currentStep < TOTAL_STEPS && (
             <WizardNavigation
-              onNext={() => handleNext(isValid)}
+              onNext={handleSaveAndNext}
               onPrevious={handlePrevious}
               canGoNext={isValid}
               canGoPrevious={currentStep > 1}

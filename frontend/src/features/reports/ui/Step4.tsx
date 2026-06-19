@@ -1,77 +1,139 @@
+import { useEffect, useMemo } from 'react';
+import { useForm, useWatch, useFieldArray, Controller } from 'react-hook-form';
+import { useFormStore } from '../model/useFormStore';
+import { useValidationSync } from '../hooks/useValidationSync';
+import type { Step4Data } from '../types';
 import {
   COMPLEXITY_OPTIONS,
   PART_TYPES,
   REPAIR_PART_NAMES,
 } from '@/constants/reference';
-import { useStep4Logic } from '../hooks/useStep4Logic';
+import { calcRepairWorkPrice } from '../lib/calculations';
 import FieldLabel from '@/shared/ui/FieldLabel';
 import Input from '@/shared/ui/Input';
 import Button from '@/shared/ui/Button';
 
+const EMPTY_STEP4: Step4Data = {
+  hourly_rate: 0,
+  repair_works: [],
+  paint_works: [],
+  spare_parts: [],
+  materials: [],
+};
+
 function Step4({ onValidationChange }: { onValidationChange: (isValid: boolean) => void }) {
-  const {
-    hourlyRate,
-    repairWorks,
-    paintWorks,
-    spareParts,
-    materials,
-    totals,
-    handleHourlyRateChange,
-    addRepairWork,
-    updateRepairWork,
-    removeRepairWork,
-    addPaintWork,
-    updatePaintWork,
-    removePaintWork,
-    addSparePart,
-    updateSparePart,
-    removeSparePart,
-    addMaterial,
-    updateMaterial,
-    removeMaterial,
-  } = useStep4Logic({ onValidationChange });
+  const step4Data = useFormStore((s) => s.step4);
+  const setStep4 = useFormStore((s) => s.setStep4);
+
+  const { register, control, formState: { isValid }, setValue, getValues } = useForm<Step4Data>({
+    mode: 'onBlur',
+    defaultValues: step4Data ?? EMPTY_STEP4,
+  });
+
+  const repairWorks = useFieldArray({ control, name: 'repair_works' });
+  const paintWorks = useFieldArray({ control, name: 'paint_works' });
+  const spareParts = useFieldArray({ control, name: 'spare_parts' });
+  const materials = useFieldArray({ control, name: 'materials' });
+
+  const watchedValues = useWatch({ control });
+
+  // Sync form data with FormStore
+  useEffect(() => {
+    if (watchedValues && Object.keys(watchedValues).length > 0) {
+      setStep4(watchedValues as Step4Data);
+    }
+  }, [watchedValues, setStep4]);
+
+  // Sync validation state via formState.isValid subscription
+  useValidationSync(isValid, onValidationChange);
+
+  const hourlyRate = watchedValues.hourly_rate ?? 0;
+
+  const totals = useMemo(() => {
+    const rw = watchedValues.repair_works ?? [];
+    const pw = watchedValues.paint_works ?? [];
+    const sp = watchedValues.spare_parts ?? [];
+    const mt = watchedValues.materials ?? [];
+
+    return {
+      totalRepair: rw.reduce((sum, work) => sum + (work?.price ?? 0), 0),
+      totalPaint: pw.reduce((sum, work) => sum + (work?.paint_price ?? 0) + (work?.polish_price ?? 0), 0),
+      totalSpare: sp.reduce((sum, part) => sum + ((part?.qty ?? 0) * (part?.price ?? 0)), 0),
+      totalMat: mt.reduce((sum, mat) => sum + ((mat?.qty ?? 0) * (mat?.price ?? 0)), 0),
+    };
+  }, [watchedValues.repair_works, watchedValues.paint_works, watchedValues.spare_parts, watchedValues.materials]);
+
+  const recalcRepairPrices = (newRate: number) => {
+    const currentWorks = getValues('repair_works');
+    currentWorks.forEach((work, index) => {
+      const newPrice = calcRepairWorkPrice(newRate, work.complexity);
+      setValue(`repair_works.${index}.price`, newPrice);
+    });
+  };
 
   return (
     <div className="space-y-8">
       <div>
-        <h2 className="text-2xl font-bold text-gray-800">{'\u0428\u0430\u0433 4: Tamirlash'}</h2>
+        <h2 className="text-2xl font-bold text-gray-800">Шаг 4: Tamirlash</h2>
         <p className="text-sm text-gray-600 mt-2">
-          {'\u0420\u0435\u043c\u043e\u043d\u0442\u043d\u044b\u0435 \u0440\u0430\u0431\u043e\u0442\u044b, \u043f\u043e\u043a\u0440\u0430\u0441\u043a\u0430, \u0437\u0430\u043f\u0447\u0430\u0441\u0442\u0438 \u0438 \u043c\u0430\u0442\u0435\u0440\u0438\u0430\u043b\u044b'}
+          Ремонтные работы, покраска, запчасти и материалы
         </p>
       </div>
 
       <section>
-        <h3 className="text-lg font-semibold text-gray-800 mb-4 pb-2 border-b">4.1 {'\u2014'} {'\u041d\u043e\u0440\u043c\u043e-\u0447\u0430\u0441'}</h3>
-        <Input
-          type="number"
-          id="hourlyRate"
-          label={'\u041d\u043e\u0440\u043c\u043e-\u0447\u0430\u0441 (\u0441\u0443\u043c) / Usta haqqi'}
-          value={hourlyRate}
-          onChange={(e) => handleHourlyRateChange(parseFloat(e.target.value) || 0)}
-          error={hourlyRate <= 0 ? '\u041d\u043e\u0440\u043c\u043e-\u0447\u0430\u0441 \u0434\u043e\u043b\u0436\u0435\u043d \u0431\u044b\u0442\u044c \u0431\u043e\u043b\u044c\u0448\u0435 0' : undefined}
-          required
+        <h3 className="text-lg font-semibold text-gray-800 mb-4 pb-2 border-b">4.1 — Нормо-час</h3>
+        <Controller
+          name="hourly_rate"
+          control={control}
+          rules={{ required: true, min: 1 }}
+          render={({ field, fieldState }) => (
+            <Input
+              type="number"
+              id="hourlyRate"
+              label="Нормо-час (сум) / Usta haqqi"
+              value={field.value || ''}
+              onChange={(e) => {
+                const val = parseFloat(e.target.value) || 0;
+                field.onChange(val);
+                recalcRepairPrices(val);
+              }}
+              onBlur={field.onBlur}
+              error={fieldState.error ? 'Нормо-час должен быть больше 0' : undefined}
+              required
+            />
+          )}
         />
       </section>
 
       <section>
         <div className="flex justify-between items-center mb-4 pb-2 border-b">
-          <h3 className="text-lg font-semibold text-gray-800">4.2 {'\u2014'} {'\u0420\u0435\u043c\u043e\u043d\u0442\u043d\u044b\u0435 \u0440\u0430\u0431\u043e\u0442\u044b'}</h3>
-          <Button onClick={addRepairWork} variant="primary" size="sm">+ {'\u0414\u043e\u0431\u0430\u0432\u0438\u0442\u044c'}</Button>
+          <h3 className="text-lg font-semibold text-gray-800">4.2 — Ремонтные работы</h3>
+          <Button
+            onClick={() => repairWorks.append({
+              part_name: '',
+              type: "Bo'luvchi",
+              complexity: 'BT-1',
+              price: calcRepairWorkPrice(hourlyRate, 'BT-1'),
+            })}
+            variant="primary"
+            size="sm"
+          >
+            + Добавить
+          </Button>
         </div>
 
-        {repairWorks.length === 0 && (
-          <p className="text-gray-500 text-sm mb-4">{'\u0414\u043e\u0431\u0430\u0432\u044c\u0442\u0435 \u043c\u0438\u043d\u0438\u043c\u0443\u043c \u043e\u0434\u043d\u0443 \u0440\u0435\u043c\u043e\u043d\u0442\u043d\u0443\u044e \u0440\u0430\u0431\u043e\u0442\u0443'}</p>
+        {repairWorks.fields.length === 0 && (
+          <p className="text-gray-500 text-sm mb-4">Добавьте минимум одну ремонтную работу</p>
         )}
 
-        {repairWorks.map((work, index) => (
-          <div key={index} className="border border-gray-200 rounded-lg p-4 mb-3 bg-gray-50">
+        {repairWorks.fields.map((field, index) => (
+          <div key={field.id} className="border border-gray-200 rounded-lg p-4 mb-3 bg-gray-50">
             <div className="grid grid-cols-1 md:grid-cols-5 gap-3 items-end">
               <div>
-                <FieldLabel ru={'\u0414\u0435\u0442\u0430\u043b\u044c'} uz="Detal" />
+                <FieldLabel ru="Деталь" uz="Detal" />
                 <input
                   list={`repair-parts-${index}`}
-                  value={work.part_name}
-                  onChange={(e) => updateRepairWork(index, 'part_name', e.target.value)}
+                  {...register(`repair_works.${index}.part_name`)}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
                 />
                 <datalist id={`repair-parts-${index}`}>
@@ -81,10 +143,9 @@ function Step4({ onValidationChange }: { onValidationChange: (isValid: boolean) 
                 </datalist>
               </div>
               <div>
-                <FieldLabel ru={'\u0422\u0438\u043f'} uz="Turi" />
+                <FieldLabel ru="Тип" uz="Turi" />
                 <select
-                  value={work.type}
-                  onChange={(e) => updateRepairWork(index, 'type', e.target.value)}
+                  {...register(`repair_works.${index}.type`)}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
                 >
                   {PART_TYPES.map((t) => (
@@ -93,23 +154,43 @@ function Step4({ onValidationChange }: { onValidationChange: (isValid: boolean) 
                 </select>
               </div>
               <div>
-                <FieldLabel ru={'\u0421\u043b\u043e\u0436\u043d\u043e\u0441\u0442\u044c'} uz="Murakkablik" />
-                <select
-                  value={work.complexity}
-                  onChange={(e) => updateRepairWork(index, 'complexity', e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
-                >
-                  {COMPLEXITY_OPTIONS.map((c) => (
-                    <option key={c.value} value={c.value}>{c.label}</option>
-                  ))}
-                </select>
+                <FieldLabel ru="Сложность" uz="Murakkablik" />
+                <Controller
+                  name={`repair_works.${index}.complexity`}
+                  control={control}
+                  render={({ field: complexityField }) => (
+                    <select
+                      value={complexityField.value}
+                      onChange={(e) => {
+                        complexityField.onChange(e.target.value);
+                        const newPrice = calcRepairWorkPrice(hourlyRate, e.target.value);
+                        setValue(`repair_works.${index}.price`, newPrice);
+                      }}
+                      onBlur={complexityField.onBlur}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                    >
+                      {COMPLEXITY_OPTIONS.map((c) => (
+                        <option key={c.value} value={c.value}>{c.label}</option>
+                      ))}
+                    </select>
+                  )}
+                />
               </div>
               <div>
-                <FieldLabel ru={'\u0421\u0442\u043e\u0438\u043c\u043e\u0441\u0442\u044c'} uz="Narxi" />
-                <input type="number" value={work.price} readOnly className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm bg-gray-100" />
+                <FieldLabel ru="Стоимость" uz="Narxi" />
+                <input
+                  type="number"
+                  {...register(`repair_works.${index}.price`, { valueAsNumber: true })}
+                  readOnly
+                  className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm bg-gray-100"
+                />
               </div>
-              <button type="button" onClick={() => removeRepairWork(index)} className="px-3 py-2 text-red-600 hover:bg-red-50 rounded text-sm">
-                {'\u0423\u0434\u0430\u043b\u0438\u0442\u044c'}
+              <button
+                type="button"
+                onClick={() => repairWorks.remove(index)}
+                className="px-3 py-2 text-red-600 hover:bg-red-50 rounded text-sm"
+              >
+                Удалить
               </button>
             </div>
           </div>
@@ -118,16 +199,65 @@ function Step4({ onValidationChange }: { onValidationChange: (isValid: boolean) 
 
       <section>
         <div className="flex justify-between items-center mb-4 pb-2 border-b">
-          <h3 className="text-lg font-semibold text-gray-800">4.3 {'\u2014'} {'\u041f\u043e\u043a\u0440\u0430\u0441\u043e\u0447\u043d\u044b\u0435 \u0440\u0430\u0431\u043e\u0442\u044b'}</h3>
-          <Button onClick={addPaintWork} variant="primary" size="sm">+ {'\u0414\u043e\u0431\u0430\u0432\u0438\u0442\u044c'}</Button>
+          <h3 className="text-lg font-semibold text-gray-800">4.3 — Покрасочные работы</h3>
+          <Button
+            onClick={() => paintWorks.append({ part_name: '', paint_price: 0, polish_price: 0 })}
+            variant="primary"
+            size="sm"
+          >
+            + Добавить
+          </Button>
         </div>
-        {paintWorks.map((work, index) => (
-          <div key={index} className="border border-gray-200 rounded-lg p-4 mb-3 bg-gray-50">
+        {paintWorks.fields.map((field, index) => (
+          <div key={field.id} className="border border-gray-200 rounded-lg p-4 mb-3 bg-gray-50">
             <div className="grid grid-cols-1 md:grid-cols-4 gap-3 items-end">
-              <Input label={'\u0414\u0435\u0442\u0430\u043b\u044c / Detal'} value={work.part_name} onChange={(e) => updatePaintWork(index, 'part_name', e.target.value)} />
-              <Input type="number" label={"\u041f\u043e\u043a\u0440\u0430\u0441\u043a\u0430 / Bo'yoq"} value={work.paint_price || ''} onChange={(e) => updatePaintWork(index, 'paint_price', parseFloat(e.target.value) || 0)} min={0} />
-              <Input type="number" label={'\u041f\u043e\u043b\u0438\u0440\u043e\u0432\u043a\u0430 / Politura'} value={work.polish_price || ''} onChange={(e) => updatePaintWork(index, 'polish_price', parseFloat(e.target.value) || 0)} min={0} />
-              <button type="button" onClick={() => removePaintWork(index)} className="px-3 py-2 text-red-600 hover:bg-red-50 rounded text-sm">{'\u0423\u0434\u0430\u043b\u0438\u0442\u044c'}</button>
+              <Controller
+                name={`paint_works.${index}.part_name`}
+                control={control}
+                render={({ field: f }) => (
+                  <Input
+                    label="Деталь / Detal"
+                    value={f.value}
+                    onChange={f.onChange}
+                    onBlur={f.onBlur}
+                  />
+                )}
+              />
+              <Controller
+                name={`paint_works.${index}.paint_price`}
+                control={control}
+                render={({ field: f }) => (
+                  <Input
+                    type="number"
+                    label="Покраска / Bo'yoq"
+                    value={f.value || ''}
+                    onChange={(e) => f.onChange(parseFloat(e.target.value) || 0)}
+                    onBlur={f.onBlur}
+                    min={0}
+                  />
+                )}
+              />
+              <Controller
+                name={`paint_works.${index}.polish_price`}
+                control={control}
+                render={({ field: f }) => (
+                  <Input
+                    type="number"
+                    label="Полировка / Politura"
+                    value={f.value || ''}
+                    onChange={(e) => f.onChange(parseFloat(e.target.value) || 0)}
+                    onBlur={f.onBlur}
+                    min={0}
+                  />
+                )}
+              />
+              <button
+                type="button"
+                onClick={() => paintWorks.remove(index)}
+                className="px-3 py-2 text-red-600 hover:bg-red-50 rounded text-sm"
+              >
+                Удалить
+              </button>
             </div>
           </div>
         ))}
@@ -135,16 +265,65 @@ function Step4({ onValidationChange }: { onValidationChange: (isValid: boolean) 
 
       <section>
         <div className="flex justify-between items-center mb-4 pb-2 border-b">
-          <h3 className="text-lg font-semibold text-gray-800">4.4 {'\u2014'} {'\u0417\u0430\u043f\u0447\u0430\u0441\u0442\u0438 / Ehtiyot qismlar'}</h3>
-          <Button onClick={addSparePart} variant="primary" size="sm">+ {'\u0414\u043e\u0431\u0430\u0432\u0438\u0442\u044c'}</Button>
+          <h3 className="text-lg font-semibold text-gray-800">4.4 — Запчасти / Ehtiyot qismlar</h3>
+          <Button
+            onClick={() => spareParts.append({ name: '', qty: 1, price: 0 })}
+            variant="primary"
+            size="sm"
+          >
+            + Добавить
+          </Button>
         </div>
-        {spareParts.map((part, index) => (
-          <div key={index} className="border border-gray-200 rounded-lg p-4 mb-3 bg-gray-50">
+        {spareParts.fields.map((field, index) => (
+          <div key={field.id} className="border border-gray-200 rounded-lg p-4 mb-3 bg-gray-50">
             <div className="grid grid-cols-1 md:grid-cols-4 gap-3 items-end">
-              <Input label={'\u041d\u0430\u0437\u0432\u0430\u043d\u0438\u0435 / Nom'} value={part.name} onChange={(e) => updateSparePart(index, 'name', e.target.value)} />
-              <Input type="number" label={'\u041a\u043e\u043b-\u0432\u043e / Miqdor'} value={part.qty} onChange={(e) => updateSparePart(index, 'qty', parseInt(e.target.value) || 1)} min={1} />
-              <Input type="number" label={'\u0426\u0435\u043d\u0430 / Narxi'} value={part.price || ''} onChange={(e) => updateSparePart(index, 'price', parseFloat(e.target.value) || 0)} min={0} />
-              <button type="button" onClick={() => removeSparePart(index)} className="px-3 py-2 text-red-600 hover:bg-red-50 rounded text-sm">{'\u0423\u0434\u0430\u043b\u0438\u0442\u044c'}</button>
+              <Controller
+                name={`spare_parts.${index}.name`}
+                control={control}
+                render={({ field: f }) => (
+                  <Input
+                    label="Название / Nom"
+                    value={f.value}
+                    onChange={f.onChange}
+                    onBlur={f.onBlur}
+                  />
+                )}
+              />
+              <Controller
+                name={`spare_parts.${index}.qty`}
+                control={control}
+                render={({ field: f }) => (
+                  <Input
+                    type="number"
+                    label="Кол-во / Miqdor"
+                    value={f.value}
+                    onChange={(e) => f.onChange(parseInt(e.target.value) || 1)}
+                    onBlur={f.onBlur}
+                    min={1}
+                  />
+                )}
+              />
+              <Controller
+                name={`spare_parts.${index}.price`}
+                control={control}
+                render={({ field: f }) => (
+                  <Input
+                    type="number"
+                    label="Цена / Narxi"
+                    value={f.value || ''}
+                    onChange={(e) => f.onChange(parseFloat(e.target.value) || 0)}
+                    onBlur={f.onBlur}
+                    min={0}
+                  />
+                )}
+              />
+              <button
+                type="button"
+                onClick={() => spareParts.remove(index)}
+                className="px-3 py-2 text-red-600 hover:bg-red-50 rounded text-sm"
+              >
+                Удалить
+              </button>
             </div>
           </div>
         ))}
@@ -152,27 +331,76 @@ function Step4({ onValidationChange }: { onValidationChange: (isValid: boolean) 
 
       <section>
         <div className="flex justify-between items-center mb-4 pb-2 border-b">
-          <h3 className="text-lg font-semibold text-gray-800">4.5 {'\u2014'} {'\u041c\u0430\u0442\u0435\u0440\u0438\u0430\u043b\u044b / Materiallar'}</h3>
-          <Button onClick={addMaterial} variant="primary" size="sm">+ {'\u0414\u043e\u0431\u0430\u0432\u0438\u0442\u044c'}</Button>
+          <h3 className="text-lg font-semibold text-gray-800">4.5 — Материалы / Materiallar</h3>
+          <Button
+            onClick={() => materials.append({ name: '', qty: 1, price: 0 })}
+            variant="primary"
+            size="sm"
+          >
+            + Добавить
+          </Button>
         </div>
-        {materials.map((mat, index) => (
-          <div key={index} className="border border-gray-200 rounded-lg p-4 mb-3 bg-gray-50">
+        {materials.fields.map((field, index) => (
+          <div key={field.id} className="border border-gray-200 rounded-lg p-4 mb-3 bg-gray-50">
             <div className="grid grid-cols-1 md:grid-cols-4 gap-3 items-end">
-              <Input label={'\u041d\u0430\u0437\u0432\u0430\u043d\u0438\u0435 / Nom'} value={mat.name} onChange={(e) => updateMaterial(index, 'name', e.target.value)} />
-              <Input type="number" label={'\u041a\u043e\u043b-\u0432\u043e / Miqdor'} value={mat.qty} onChange={(e) => updateMaterial(index, 'qty', parseInt(e.target.value) || 1)} min={1} />
-              <Input type="number" label={'\u0426\u0435\u043d\u0430 / Narxi'} value={mat.price || ''} onChange={(e) => updateMaterial(index, 'price', parseFloat(e.target.value) || 0)} min={0} />
-              <button type="button" onClick={() => removeMaterial(index)} className="px-3 py-2 text-red-600 hover:bg-red-50 rounded text-sm">{'\u0423\u0434\u0430\u043b\u0438\u0442\u044c'}</button>
+              <Controller
+                name={`materials.${index}.name`}
+                control={control}
+                render={({ field: f }) => (
+                  <Input
+                    label="Название / Nom"
+                    value={f.value}
+                    onChange={f.onChange}
+                    onBlur={f.onBlur}
+                  />
+                )}
+              />
+              <Controller
+                name={`materials.${index}.qty`}
+                control={control}
+                render={({ field: f }) => (
+                  <Input
+                    type="number"
+                    label="Кол-во / Miqdor"
+                    value={f.value}
+                    onChange={(e) => f.onChange(parseInt(e.target.value) || 1)}
+                    onBlur={f.onBlur}
+                    min={1}
+                  />
+                )}
+              />
+              <Controller
+                name={`materials.${index}.price`}
+                control={control}
+                render={({ field: f }) => (
+                  <Input
+                    type="number"
+                    label="Цена / Narxi"
+                    value={f.value || ''}
+                    onChange={(e) => f.onChange(parseFloat(e.target.value) || 0)}
+                    onBlur={f.onBlur}
+                    min={0}
+                  />
+                )}
+              />
+              <button
+                type="button"
+                onClick={() => materials.remove(index)}
+                className="px-3 py-2 text-red-600 hover:bg-red-50 rounded text-sm"
+              >
+                Удалить
+              </button>
             </div>
           </div>
         ))}
       </section>
 
-      {(repairWorks.length > 0 || paintWorks.length > 0 || spareParts.length > 0 || materials.length > 0) && (
+      {(repairWorks.fields.length > 0 || paintWorks.fields.length > 0 || spareParts.fields.length > 0 || materials.fields.length > 0) && (
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-          <div><span className="text-gray-600">{'\u0420\u0435\u043c\u043e\u043d\u0442:'}</span> <strong>{totals.totalRepair.toLocaleString('ru-RU')}</strong></div>
-          <div><span className="text-gray-600">{'\u041f\u043e\u043a\u0440\u0430\u0441\u043a\u0430:'}</span> <strong>{totals.totalPaint.toLocaleString('ru-RU')}</strong></div>
-          <div><span className="text-gray-600">{'\u0417\u0430\u043f\u0447\u0430\u0441\u0442\u0438:'}</span> <strong>{totals.totalSpare.toLocaleString('ru-RU')}</strong></div>
-          <div><span className="text-gray-600">{'\u041c\u0430\u0442\u0435\u0440\u0438\u0430\u043b\u044b:'}</span> <strong>{totals.totalMat.toLocaleString('ru-RU')}</strong></div>
+          <div><span className="text-gray-600">Ремонт:</span> <strong>{totals.totalRepair.toLocaleString('ru-RU')}</strong></div>
+          <div><span className="text-gray-600">Покраска:</span> <strong>{totals.totalPaint.toLocaleString('ru-RU')}</strong></div>
+          <div><span className="text-gray-600">Запчасти:</span> <strong>{totals.totalSpare.toLocaleString('ru-RU')}</strong></div>
+          <div><span className="text-gray-600">Материалы:</span> <strong>{totals.totalMat.toLocaleString('ru-RU')}</strong></div>
         </div>
       )}
     </div>

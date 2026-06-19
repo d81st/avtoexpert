@@ -12,10 +12,29 @@ interface UseExpertsParams {
   onSelectExpert: (id: string) => void;
 }
 
+export interface UseExpertsReturn {
+  experts: Expert[];
+  isLoading: boolean;
+  error: string | null;
+  setError: (message: string | null) => void;
+  showExpertModal: boolean;
+  newExpertName: string;
+  setNewExpertName: (name: string) => void;
+  editingExpertId: string | null;
+  expertError: string | null;
+  setExpertError: (error: string | null) => void;
+  openExpertModal: () => void;
+  closeExpertModal: () => void;
+  handleAddExpert: () => Promise<void>;
+  handleUpdateExpert: () => Promise<void>;
+  handleDeleteExpert: (id: string) => Promise<void>;
+  openEditExpert: (expert: Expert) => void;
+}
+
 export function useExperts({
   selectedExpertId,
   onSelectExpert,
-}: UseExpertsParams) {
+}: UseExpertsParams): UseExpertsReturn {
   const expertsQuery = useExpertsQuery();
   const createExpertMutation = useCreateExpertMutation();
   const updateExpertMutation = useUpdateExpertMutation();
@@ -45,7 +64,7 @@ export function useExperts({
   const handleAddExpert = async () => {
     const trimmedName = newExpertName.trim();
     if (!trimmedName) {
-      setExpertError("Р’РІРµРґРёС‚Рµ РёРјСЏ СЌРєСЃРїРµСЂС‚Р°");
+      setExpertError("Введите имя эксперта");
       return;
     }
 
@@ -59,7 +78,7 @@ export function useExperts({
       setExpertError(
         err instanceof Error
           ? err.message
-          : "РћС€РёР±РєР° СЃРѕР·РґР°РЅРёСЏ СЌРєСЃРїРµСЂС‚Р°",
+          : "Ошибка создания эксперта",
       );
     }
   };
@@ -67,7 +86,7 @@ export function useExperts({
   const handleUpdateExpert = async () => {
     const trimmedName = newExpertName.trim();
     if (!editingExpertId || !trimmedName) {
-      setExpertError("Р’РІРµРґРёС‚Рµ РёРјСЏ СЌРєСЃРїРµСЂС‚Р°");
+      setExpertError("Введите имя эксперта");
       return;
     }
 
@@ -83,13 +102,13 @@ export function useExperts({
       setExpertError(
         err instanceof Error
           ? err.message
-          : "РћС€РёР±РєР° РѕР±РЅРѕРІР»РµРЅРёСЏ СЌРєСЃРїРµСЂС‚Р°",
+          : "Ошибка обновления эксперта",
       );
     }
   };
 
   const handleDeleteExpert = async (id: string) => {
-    if (!confirm("РЈРґР°Р»РёС‚СЊ СЌС‚РѕРіРѕ СЌРєСЃРїРµСЂС‚Р°?")) return;
+    if (!confirm("Удалить этого эксперта?")) return;
 
     try {
       await deleteExpertMutation.mutateAsync(id);
@@ -98,7 +117,7 @@ export function useExperts({
       setExpertError(
         err instanceof Error
           ? err.message
-          : "РћС€РёР±РєР° СѓРґР°Р»РµРЅРёСЏ СЌРєСЃРїРµСЂС‚Р°",
+          : "Ошибка удаления эксперта",
       );
     }
   };

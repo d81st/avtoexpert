@@ -7,10 +7,14 @@ interface UseReportAutosaveParams {
   currentStep: number;
 }
 
+export interface UseReportAutosaveReturn {
+  isSaving: boolean;
+}
+
 export function useReportAutosave({
   reportId,
   currentStep,
-}: UseReportAutosaveParams) {
+}: UseReportAutosaveParams): UseReportAutosaveReturn {
   const { step2, step3, step4 } = useFormStore();
   const [isSaving, setIsSaving] = useState(false);
 

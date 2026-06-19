@@ -3,6 +3,10 @@ export interface Expert {
   full_name: string;
 }
 
+export interface ExpertsQueryParams {
+  search?: string;
+}
+
 export interface Report {
   id: string;
   status: "draft" | "completed";

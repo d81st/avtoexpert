@@ -1,43 +1,42 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import type { ChangeEvent, DragEvent } from "react";
 import { ACCEPTED_PHOTO_TYPES, MAX_PHOTOS } from "@/constants/reference";
-import { photoService } from "../api/photoApi";
 import { useFormStore } from "../model/useFormStore";
 import { useReportStore } from "../model/useReportStore";
+import {
+  useDeletePhotoMutation,
+  usePhotosQuery,
+  useUploadPhotosMutation,
+} from "../model/reportQueries";
 import type { ReportPhoto } from "../types";
 
-export function usePhotoUpload() {
-  const { step5, setStep5 } = useFormStore();
+export interface UsePhotoUploadReturn {
+  photos: ReportPhoto[];
+  uploading: boolean;
+  uploadError: string | null;
+  setUploadError: (error: string | null) => void;
+  isDragging: boolean;
+  handleFileInput: (event: ChangeEvent<HTMLInputElement>) => void;
+  handleDragOver: (event: DragEvent) => void;
+  handleDragLeave: () => void;
+  handleDrop: (event: DragEvent) => void;
+  removePhoto: (photo: ReportPhoto) => Promise<void>;
+}
+
+export function usePhotoUpload(): UsePhotoUploadReturn {
+  const { setStep5 } = useFormStore();
   const { currentReport } = useReportStore();
-  const [photos, setPhotos] = useState<ReportPhoto[]>(step5?.photos || []);
-  const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
 
   const reportId = currentReport?.id;
 
-  useEffect(() => {
-    if (!reportId) return;
+  // Load photos via useQuery instead of useEffect
+  const photosQuery = usePhotosQuery(reportId);
+  const photos: ReportPhoto[] = photosQuery.data ?? [];
 
-    let cancelled = false;
-
-    const loadPhotos = async () => {
-      try {
-        const loaded = await photoService.getPhotos(reportId);
-        if (cancelled) return;
-        setPhotos(loaded);
-        setStep5({ photos: loaded });
-      } catch {
-        // Черновик без фото - нормальная ситуация.
-      }
-    };
-
-    void loadPhotos();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [reportId, setStep5]);
+  const uploadMutation = useUploadPhotosMutation(reportId ?? "");
+  const deleteMutation = useDeletePhotoMutation(reportId ?? "");
 
   const uploadFiles = useCallback(
     async (files: FileList | File[]) => {
@@ -66,25 +65,19 @@ export function usePhotoUpload() {
         return;
       }
 
-      setUploading(true);
       setUploadError(null);
 
       try {
-        const uploaded = await photoService.uploadPhotos(reportId, fileArray);
+        const uploaded = await uploadMutation.mutateAsync(fileArray);
         const next = [...photos, ...uploaded];
-        setPhotos(next);
         setStep5({ photos: next });
       } catch (err) {
         setUploadError(
-          err instanceof Error
-            ? err.message
-            : "Ошибка загрузки фото",
+          err instanceof Error ? err.message : "Ошибка загрузки фото",
         );
-      } finally {
-        setUploading(false);
       }
     },
-    [photos, reportId, setStep5],
+    [photos, reportId, uploadMutation, setStep5],
   );
 
   const handleFileInput = (event: ChangeEvent<HTMLInputElement>) => {
@@ -115,22 +108,19 @@ export function usePhotoUpload() {
     if (!reportId) return;
 
     try {
-      await photoService.deletePhoto(reportId, photo.id);
+      await deleteMutation.mutateAsync(photo.id);
       const next = photos.filter((item) => item.id !== photo.id);
-      setPhotos(next);
       setStep5({ photos: next });
     } catch (err) {
       setUploadError(
-        err instanceof Error
-          ? err.message
-          : "Ошибка удаления фото",
+        err instanceof Error ? err.message : "Ошибка удаления фото",
       );
     }
   };
 
   return {
     photos,
-    uploading,
+    uploading: uploadMutation.isPending,
     uploadError,
     setUploadError,
     isDragging,

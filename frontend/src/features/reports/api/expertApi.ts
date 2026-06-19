@@ -1,9 +1,12 @@
 import apiClient from "@/shared/api/client";
-import type { Expert } from "../types";
+import type { Expert, ExpertsQueryParams } from "../types";
 
 export const expertService = {
-  async getExperts(): Promise<Expert[]> {
-    const response = await apiClient.get<Record<string, unknown>[]>("/experts");
+  async getExperts(params?: ExpertsQueryParams): Promise<Expert[]> {
+    const response = await apiClient.get<Record<string, unknown>[]>(
+      "/experts",
+      { params },
+    );
 
     return response.data.map((expert) => ({
       id: (expert.id as string) || "",

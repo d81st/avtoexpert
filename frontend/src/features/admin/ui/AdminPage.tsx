@@ -1,52 +1,33 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { useAuthStore } from "@/shared/auth/useAuthStore";
-import type { AdminTab } from "../types";
+import { useAdmin } from "../hooks/useAdmin";
 import AdminReportsTab from "./AdminReportsTab";
 import AdminCreatorsTab from "./AdminCreatorsTab";
 import AdminTemplateTab from "./AdminTemplateTab";
 import Loader from "@/shared/ui/Loader";
 import Button from "@/shared/ui/Button";
+import AppLayout from "@/shared/ui/AppLayout";
 
 function AdminPage() {
-  const navigate = useNavigate();
-  const user = useAuthStore((state) => state.user);
-
-  const isAdmin = user?.role === "admin";
-  const [activeTab, setActiveTab] = useState<AdminTab>("reports");
-
-  const handleLogout = () => {
-    useAuthStore.getState().logout();
-    navigate("/login");
-  };
+  const {
+    isAdmin,
+    activeTab,
+    setActiveTab,
+    handleGoToDashboard,
+  } = useAdmin();
 
   if (!isAdmin) {
     return <Loader message="Проверка прав доступа..." />;
   }
 
   return (
-    <div className="app-shell">
-      <header className="app-header">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
-          <div>
-            <h1 className="brand-title text-2xl font-bold text-slate-900">
-              AvtoExpert Pro — Админ
-            </h1>
-            <p className="page-subtitle mt-1 text-sm">Панель управления</p>
-          </div>
-          <div className="flex items-center gap-4">
-            <span className="text-gray-700 font-medium">{user?.full_name}</span>
-            <Button onClick={() => navigate("/")} variant="secondary" size="sm">
-              ← К заключениям
-            </Button>
-            <Button onClick={handleLogout} variant="danger" size="sm">
-              Выйти
-            </Button>
-          </div>
-        </div>
-      </header>
-
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <AppLayout
+      title="AvtoExpert Pro — Админ"
+      subtitle="Панель управления"
+      headerActions={
+        <Button onClick={handleGoToDashboard} variant="secondary" size="sm">
+          ← К заключениям
+        </Button>
+      }
+    >
         <div className="surface-card mb-6 flex rounded-2xl p-2">
           <button
             onClick={() => setActiveTab("reports")}
@@ -83,8 +64,7 @@ function AdminPage() {
         {activeTab === "reports" && <AdminReportsTab />}
         {activeTab === "creators" && <AdminCreatorsTab />}
         {activeTab === "template" && <AdminTemplateTab />}
-      </main>
-    </div>
+    </AppLayout>
   );
 }
 

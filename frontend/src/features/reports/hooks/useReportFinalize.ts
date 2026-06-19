@@ -8,7 +8,15 @@ interface UseReportFinalizeParams {
   reportId?: string;
 }
 
-export function useReportFinalize({ reportId }: UseReportFinalizeParams) {
+export interface UseReportFinalizeReturn {
+  isGenerating: boolean;
+  generateError: string | null;
+  generateSuccess: boolean;
+  setGenerateSuccess: (value: boolean) => void;
+  handleFinalize: () => Promise<void>;
+}
+
+export function useReportFinalize({ reportId }: UseReportFinalizeParams): UseReportFinalizeReturn {
   const { step5 } = useFormStore();
   const { currentReport } = useReportStore();
   const [isGenerating, setIsGenerating] = useState(false);
@@ -36,7 +44,7 @@ export function useReportFinalize({ reportId }: UseReportFinalizeParams) {
       setGenerateSuccess(true);
     } catch (err) {
       setGenerateError(
-        (err as Error).message || "РћС€РёР±РєР° РіРµРЅРµСЂР°С†РёРё РґРѕРєСѓРјРµРЅС‚Р°",
+        (err as Error).message || "Ошибка генерации документа",
       );
     } finally {
       setIsGenerating(false);

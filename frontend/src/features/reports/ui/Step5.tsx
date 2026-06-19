@@ -1,10 +1,12 @@
 import { useEffect } from "react";
+import { useForm, useWatch } from "react-hook-form";
 import { MAX_PHOTOS } from "@/constants/reference";
 import { formatSum } from "@/shared/lib/formatters";
 import { usePhotoUpload } from "../hooks/usePhotoUpload";
+import { useValidationSync } from "../hooks/useValidationSync";
 import { useFormStore } from "../model/useFormStore";
 import { calcGrandTotal } from "../lib/calculations";
-import { validateStep5 } from "../lib/validators";
+import type { Step5Data } from "../types";
 import Alert from "@/shared/ui/Alert";
 import Button from "@/shared/ui/Button";
 
@@ -23,7 +25,10 @@ function Step5({
   generateError,
   generateSuccess,
 }: Step5Props) {
+  const step5Data = useFormStore((s) => s.step5);
+  const setStep5 = useFormStore((s) => s.setStep5);
   const { step3, step4 } = useFormStore();
+
   const {
     photos,
     uploading,
@@ -37,9 +42,28 @@ function Step5({
     removePhoto,
   } = usePhotoUpload();
 
+  // useForm for pattern consistency with other steps
+  // Step5 doesn't have traditional text fields — photos are managed by usePhotoUpload
+  const { control, setValue } = useForm<Step5Data>({
+    mode: "onBlur",
+    defaultValues: step5Data ?? { photos: [] },
+  });
+
+  // Sync photos from usePhotoUpload into react-hook-form
   useEffect(() => {
-    onValidationChange(validateStep5({ photos }));
-  }, [photos, onValidationChange]);
+    setValue("photos", photos);
+  }, [photos, setValue]);
+
+  // Sync form data with FormStore via useWatch
+  const watchedValues = useWatch({ control });
+  useEffect(() => {
+    if (watchedValues && watchedValues.photos && watchedValues.photos.length > 0) {
+      setStep5(watchedValues as Step5Data);
+    }
+  }, [watchedValues, photos, setStep5]);
+
+  // Step5 is always valid (photos are optional) — notify parent via validation sync hook
+  useValidationSync(true, onValidationChange);
 
   const depreciationPct = step3?.depreciation_pct ?? 90;
   const totals = step4

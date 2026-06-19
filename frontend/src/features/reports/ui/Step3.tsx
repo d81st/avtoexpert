@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
+import { useForm, useWatch, Controller } from 'react-hook-form';
 import { useFormStore } from '../model/useFormStore';
+import { useValidationSync } from '../hooks/useValidationSync';
 import type { Step3Data } from '../types';
 import { DEPRECIATION_OPTIONS, PRODUCTION_STATUSES } from '@/constants/reference';
-import { validateStep3 } from '../lib/validators';
 import {
   calcAverageAnalogPrice,
   calcMarketPrice,
@@ -24,49 +25,74 @@ const EMPTY_STEP3: Step3Data = {
 };
 
 function Step3({ onValidationChange }: { onValidationChange: (isValid: boolean) => void }) {
-  const { step3, setStep3 } = useFormStore();
-  const [data, setData] = useState<Step3Data>(step3 || EMPTY_STEP3);
+  const step3Data = useFormStore((s) => s.step3);
+  const setStep3 = useFormStore((s) => s.setStep3);
 
+  const { register, control, formState: { isValid } } = useForm<Step3Data>({
+    mode: 'onBlur',
+    defaultValues: step3Data ?? EMPTY_STEP3,
+  });
+
+  const watchedValues = useWatch({ control });
+
+  // Sync form data with FormStore
   useEffect(() => {
-    onValidationChange(validateStep3(data));
-  }, [data, onValidationChange]);
+    if (watchedValues && Object.keys(watchedValues).length > 0) {
+      setStep3(watchedValues as Step3Data);
+    }
+  }, [watchedValues, setStep3]);
 
-  const update = (patch: Partial<Step3Data>) => {
-    const next = { ...data, ...patch };
-    setData(next);
-    setStep3(next);
-  };
+  // Sync validation state via formState.isValid subscription
+  useValidationSync(isValid, onValidationChange);
 
   const averagePrice = calcAverageAnalogPrice([
-    data.analog1_price,
-    data.analog2_price,
-    data.analog3_price,
+    watchedValues.analog1_price ?? 0,
+    watchedValues.analog2_price ?? 0,
+    watchedValues.analog3_price ?? 0,
   ]);
-  const marketPrice = averagePrice !== null ? calcMarketPrice(averagePrice, data.depreciation_pct) : null;
+  const marketPrice = averagePrice !== null
+    ? calcMarketPrice(averagePrice, watchedValues.depreciation_pct ?? 90)
+    : null;
 
   const renderAnalog = (index: 1 | 2 | 3) => {
-    const mileageKey = `analog${index}_mileage` as keyof Step3Data;
-    const priceKey = `analog${index}_price` as keyof Step3Data;
+    const mileageKey = `analog${index}_mileage` as const;
+    const priceKey = `analog${index}_price` as const;
 
     return (
       <div key={index} className="border border-gray-200 rounded-lg p-4 bg-gray-50">
         <h4 className="font-medium text-gray-800 mb-3">Аналог {index} / Analog {index}</h4>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <Input
-            type="number"
-            label="Пробег (км)"
-            value={data[mileageKey] as number || ''}
-            onChange={(e) => update({ [mileageKey]: parseInt(e.target.value) || 0 })}
-            min={0}
-            required
+          <Controller
+            name={mileageKey}
+            control={control}
+            rules={{ required: true, min: 0 }}
+            render={({ field }) => (
+              <Input
+                type="number"
+                label="Пробег (км)"
+                value={field.value || ''}
+                onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
+                onBlur={field.onBlur}
+                min={0}
+                required
+              />
+            )}
           />
-          <Input
-            type="number"
-            label="Цена (сум)"
-            value={data[priceKey] as number || ''}
-            onChange={(e) => update({ [priceKey]: parseInt(e.target.value) || 0 })}
-            min={0}
-            required
+          <Controller
+            name={priceKey}
+            control={control}
+            rules={{ required: true, min: 0 }}
+            render={({ field }) => (
+              <Input
+                type="number"
+                label="Цена (сум)"
+                value={field.value || ''}
+                onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
+                onBlur={field.onBlur}
+                min={0}
+                required
+              />
+            )}
           />
         </div>
       </div>
@@ -87,10 +113,8 @@ function Step3({ onValidationChange }: { onValidationChange: (isValid: boolean) 
             <label key={status.value} className="flex items-center gap-2 cursor-pointer">
               <input
                 type="radio"
-                name="productionStatus"
                 value={status.value}
-                checked={data.production_status === status.value}
-                onChange={() => update({ production_status: status.value as Step3Data['production_status'] })}
+                {...register('production_status', { required: true })}
                 className="text-blue-600"
               />
               <span className="text-sm text-gray-700">{status.label}</span>
@@ -107,22 +131,28 @@ function Step3({ onValidationChange }: { onValidationChange: (isValid: boolean) 
       </section>
 
       <section className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <Input
-          type="number"
-          id="factoryPrice"
-          label="Цена нового (с завода)"
-          value={data.factory_price || ''}
-          onChange={(e) => update({ factory_price: parseInt(e.target.value) || undefined })}
-          min={0}
-          helper="Необязательно"
+        <Controller
+          name="factory_price"
+          control={control}
+          render={({ field }) => (
+            <Input
+              type="number"
+              id="factoryPrice"
+              label="Цена нового (с завода)"
+              value={field.value || ''}
+              onChange={(e) => field.onChange(parseInt(e.target.value) || undefined)}
+              onBlur={field.onBlur}
+              min={0}
+              helper="Необязательно"
+            />
+          )}
         />
 
         <div>
           <FieldLabel ru="% физического износа" uz="Jismoniy eskirish %" required htmlFor="depreciationPct" />
           <select
             id="depreciationPct"
-            value={data.depreciation_pct}
-            onChange={(e) => update({ depreciation_pct: parseInt(e.target.value) })}
+            {...register('depreciation_pct', { required: true, valueAsNumber: true })}
             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
             {DEPRECIATION_OPTIONS.map((pct) => (

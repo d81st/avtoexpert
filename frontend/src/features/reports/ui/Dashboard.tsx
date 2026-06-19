@@ -1,122 +1,70 @@
-import { useState } from "react";
-import { useForm } from "react-hook-form";
 import { useNavigate } from "react-router-dom";
-import { useAuthStore } from "@/shared/auth/useAuthStore";
-import {
-  useDeleteReportMutation,
-  useReportsQuery,
-} from "../model/reportQueries";
+import { useDashboard } from "../hooks/useDashboard";
 import { formatDate, formatProgress } from "@/shared/lib/formatters";
 import StatusBadge from "@/shared/ui/StatusBadge";
 import Loader from "@/shared/ui/Loader";
 import Button from "@/shared/ui/Button";
 import Alert from "@/shared/ui/Alert";
 import Card from "@/shared/ui/Card";
-
-interface SearchForm {
-  search: string;
-}
+import AppLayout from "@/shared/ui/AppLayout";
 
 function Dashboard() {
   const navigate = useNavigate();
-  const user = useAuthStore((state) => state.user);
-  const logout = useAuthStore((state) => state.logout);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [searchQuery, setSearchQuery] = useState("");
-  const { register, handleSubmit, reset } = useForm<SearchForm>({
-    defaultValues: { search: "" },
-  });
-  const reportsQuery = useReportsQuery({
-    page: currentPage,
-    search: searchQuery || undefined,
-    limit: 20,
-  });
-  const deleteReportMutation = useDeleteReportMutation();
-  const reports = reportsQuery.data?.data ?? [];
-  const pagination = reportsQuery.data?.pagination ?? null;
 
-  const onSearch = handleSubmit(({ search }) => {
-    setCurrentPage(1);
-    setSearchQuery(search.trim());
-  });
+  const {
+    reports,
+    pagination,
+    isLoading,
+    error,
+    currentPage,
+    searchQuery,
+    onSearch,
+    handleClearSearch,
+    handleDeleteReport,
+    reportsQuery,
+    deleteReportMutation,
+    register,
+    setCurrentPage,
+  } = useDashboard();
 
-  const handleClearSearch = () => {
-    reset({ search: "" });
-    setCurrentPage(1);
-    setSearchQuery("");
-  };
+  if (isLoading) {
+    return <Loader message="Загрузка отчётов..." />;
+  }
 
-  const handleLogout = () => {
-    logout();
-    navigate("/login");
-  };
-
-  const handleDeleteReport = async (reportId: string) => {
-    if (!confirm("РЈРґР°Р»РёС‚СЊ СЌС‚Рѕ Р·Р°РєР»СЋС‡РµРЅРёРµ?")) return;
-    await deleteReportMutation.mutateAsync(reportId);
-  };
-
-  const error =
-    reportsQuery.error instanceof Error
-      ? reportsQuery.error.message
-      : deleteReportMutation.error instanceof Error
-        ? deleteReportMutation.error.message
-        : null;
-
-  if (reportsQuery.isLoading) {
-    return <Loader message="Р—Р°РіСЂСѓР·РєР° РѕС‚С‡РµС‚РѕРІ..." />;
+  if (error && reports.length === 0) {
+    return <Alert type="error" message={error} />;
   }
 
   return (
-    <div className="app-shell">
-      <header className="app-header">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
-          <div>
-            <h1 className="brand-title text-2xl font-bold text-slate-900">
-              AvtoExpert Pro
-            </h1>
-            <p className="page-subtitle mt-1 text-sm">
-              РЈРїСЂР°РІР»РµРЅРёРµ Р·Р°РєР»СЋС‡РµРЅРёСЏРјРё РѕР± СЌРєСЃРїРµСЂС‚РёР·Рµ
-            </p>
-          </div>
-          <div className="flex items-center gap-4">
-            <span className="text-gray-700 font-medium">{user?.full_name}</span>
-            <Button onClick={handleLogout} variant="danger" size="sm">
-              Р’С‹Р№С‚Рё
-            </Button>
-          </div>
-        </div>
-      </header>
-
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <AppLayout>
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
           <div>
             <h2 className="text-xl font-semibold text-gray-800">
-              РњРѕРё Р·Р°РєР»СЋС‡РµРЅРёСЏ
+              Мои заключения
             </h2>
             <p className="text-sm text-gray-600 mt-1">
-              Р’СЃРµРіРѕ: {pagination?.total ?? reports.length} | РЎС‚СЂР°РЅРёС†Р°{" "}
-              {pagination?.page ?? 1} РёР· {pagination?.totalPages ?? 1}
+              Всего: {pagination?.total ?? reports.length} | Страница{" "}
+              {pagination?.page ?? 1} из {pagination?.totalPages ?? 1}
             </p>
           </div>
           <Button onClick={() => navigate("/report/new")} variant="primary" size="lg">
-            + РЎРѕР·РґР°С‚СЊ Р·Р°РєР»СЋС‡РµРЅРёРµ
+            + Создать заключение
           </Button>
         </div>
 
         <form onSubmit={onSearch} className="mb-6 flex flex-col gap-2 sm:flex-row">
           <input
             type="text"
-            placeholder="РџРѕРёСЃРє РїРѕ РЅРѕРјРµСЂСѓ, РіРѕСЃРЅРѕРјРµСЂСѓ, РІР»Р°РґРµР»СЊС†Сѓ..."
+            placeholder="Поиск по номеру, госномеру, владельцу..."
             className="form-control flex-1 px-4 py-3"
             {...register("search")}
           />
           <Button type="submit" variant="secondary" isLoading={reportsQuery.isFetching}>
-            РќР°Р№С‚Рё
+            Найти
           </Button>
           {searchQuery && (
             <Button type="button" variant="secondary" onClick={handleClearSearch}>
-              РЎР±СЂРѕСЃРёС‚СЊ
+              Сбросить
             </Button>
           )}
         </form>
@@ -135,10 +83,10 @@ function Dashboard() {
         {reports.length === 0 ? (
           <Card className="text-center">
             <p className="text-gray-500 text-lg mb-4">
-              РЈ РІР°СЃ РїРѕРєР° РЅРµС‚ Р·Р°РєР»СЋС‡РµРЅРёР№
+              У вас пока нет заключений
             </p>
             <p className="text-gray-400 text-sm">
-              РЎРѕР·РґР°Р№С‚Рµ РїРµСЂРІРѕРµ Р·Р°РєР»СЋС‡РµРЅРёРµ, С‡С‚РѕР±С‹ РЅР°С‡Р°С‚СЊ СЂР°Р±РѕС‚Сѓ
+              Создайте первое заключение, чтобы начать работу
             </p>
           </Card>
         ) : (
@@ -148,19 +96,19 @@ function Dashboard() {
                 <thead className="bg-gray-50">
                   <tr>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      в„– Р—Р°РєР»СЋС‡РµРЅРёСЏ
+                      № Заключения
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Р”Р°С‚Р°
+                      Дата
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      РЎС‚Р°С‚СѓСЃ
+                      Статус
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      РџСЂРѕРіСЂРµСЃСЃ
+                      Прогресс
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Р”РµР№СЃС‚РІРёСЏ
+                      Действия
                     </th>
                   </tr>
                 </thead>
@@ -196,7 +144,7 @@ function Dashboard() {
                           onClick={() => navigate(`/report/${report.id}`)}
                           className="text-blue-600 hover:text-blue-900 hover:underline transition-colors"
                         >
-                          РћС‚РєСЂС‹С‚СЊ
+                          Открыть
                         </button>
                         {report.status === "draft" && (
                           <button
@@ -204,7 +152,7 @@ function Dashboard() {
                             className="text-red-600 hover:text-red-900 hover:underline transition-colors"
                             disabled={deleteReportMutation.isPending}
                           >
-                            РЈРґР°Р»РёС‚СЊ
+                            Удалить
                           </button>
                         )}
                       </td>
@@ -222,10 +170,10 @@ function Dashboard() {
                   disabled={currentPage <= 1}
                   onClick={() => setCurrentPage((page) => page - 1)}
                 >
-                  в†ђ РќР°Р·Р°Рґ
+                  ← Назад
                 </Button>
                 <span className="px-4 py-2 text-sm text-gray-600">
-                  РЎС‚СЂР°РЅРёС†Р° {currentPage} РёР· {pagination.totalPages}
+                  Страница {currentPage} из {pagination.totalPages}
                 </span>
                 <Button
                   variant="secondary"
@@ -233,14 +181,13 @@ function Dashboard() {
                   disabled={currentPage >= pagination.totalPages}
                   onClick={() => setCurrentPage((page) => page + 1)}
                 >
-                  Р’РїРµСЂС‘Рґ в†’
+                  Вперёд →
                 </Button>
               </div>
             )}
           </>
         )}
-      </main>
-    </div>
+    </AppLayout>
   );
 }
 
