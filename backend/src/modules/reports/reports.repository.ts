@@ -209,62 +209,6 @@ export const reportRepository = {
     };
   },
 
-  async listReportsAdmin(
-    query: { page: number; limit: number; search?: string; status?: string },
-  ) {
-    const { page, limit, search, status } = query;
-    const offset = (page - 1) * limit;
-
-    const conditions = [];
-    if (status) {
-      conditions.push(eq(reports.status, status));
-    }
-    if (search) {
-      const searchPattern = `%${search}%`;
-      conditions.push(
-        sql`(${reports.reportNumber} ILIKE ${searchPattern} OR ${reports.licensePlate} ILIKE ${searchPattern} OR ${reports.ownerName} ILIKE ${searchPattern})`,
-      );
-    }
-
-    const whereClause =
-      conditions.length > 0 ? sql.join(conditions, sql` AND `) : undefined;
-
-    const [{ count }] = await db
-      .select({ count: sql<number>`count(*)` })
-      .from(reports)
-      .where(whereClause);
-
-    const allReports = await db
-      .select({
-        id: reports.id,
-        reportNumber: reports.reportNumber,
-        reportDate: reports.reportDate,
-        applicationDate: reports.applicationDate,
-        status: reports.status,
-        currentStep: reports.currentStep,
-        grandTotal: reports.grandTotal,
-        licensePlate: reports.licensePlate,
-        ownerName: reports.ownerName,
-        creatorId: reports.creatorId,
-        updatedAt: reports.updatedAt,
-      })
-      .from(reports)
-      .where(whereClause)
-      .orderBy(desc(reports.updatedAt))
-      .limit(limit)
-      .offset(offset);
-
-    return {
-      data: allReports,
-      pagination: {
-        page,
-        limit,
-        total: Number(count),
-        totalPages: Math.ceil(Number(count) / limit),
-      },
-    };
-  },
-
   async deleteReport(id: string, creatorId: string) {
     const [deletedReport] = await db
       .delete(reports)

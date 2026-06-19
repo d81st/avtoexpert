@@ -13,7 +13,7 @@ export const adminService = {
     search?: string;
     status?: string;
   }) {
-    return reportRepository.listReportsAdmin(query);
+    return reportRepository.listReports(undefined, query);
   },
 
   async getReportDetails(reportId: string) {

@@ -6,14 +6,14 @@ import type {
   Step3Data,
   Step4Data,
   Step5Data,
-} from "@/types";
+} from "@/features/reports/types";
 import {
   normalizeReport,
   toApiAutosave,
   toApiStep2,
   toApiStep3,
   toApiStep4,
-} from "@/utils/reportMapper";
+} from "@/features/reports/lib/reportMapper";
 
 export interface ReportsQueryParams {
   page?: number;

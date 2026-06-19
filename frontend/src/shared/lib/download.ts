@@ -1,4 +1,4 @@
-import { useAuthStore } from "@/store/useAuthStore";
+import { useAuthStore } from "@/shared/auth/useAuthStore";
 
 export async function downloadBlob(
   downloadUrl: string,

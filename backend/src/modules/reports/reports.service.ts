@@ -1,10 +1,81 @@
 import path from 'node:path';
 import { badRequest } from '../../common/errors/httpError.js';
 import { storageService } from '../../shared/services/storage.service.js';
+import { expertService } from '../experts/experts.service.js';
 import { DocGenerator } from './docGenerator.js';
 import { reportRepository } from './reports.repository.js';
+import type { Step4Input } from './reports.schemas.js';
 
 export const reportService = {
+  // ── Thin wrappers (routes → service → repository) ──
+
+  async createReport(
+    creatorId: string,
+    data: {
+      expert_id: string;
+      report_number: string;
+      report_date: Date;
+      application_date: Date;
+    },
+  ) {
+    const expert = await expertService.verifyOwnership(creatorId, data.expert_id);
+    if (!expert) {
+      throw badRequest('Expert does not belong to current creator');
+    }
+
+    const newReport = await reportRepository.createReport(creatorId, data);
+    return {
+      id: newReport.id,
+      status: newReport.status,
+      current_step: newReport.currentStep,
+      message: 'Draft created',
+    };
+  },
+
+  async getFullReport(creatorId: string, reportId: string) {
+    const report = await reportRepository.getOwnedReport(reportId, creatorId);
+    const collections = await reportRepository.getStep4Collections(reportId);
+
+    return {
+      ...report,
+      repair_works: collections.repairWorksList,
+      paint_works: collections.paintWorksList,
+      spare_parts: collections.sparePartsList,
+      materials: collections.materialsList,
+    };
+  },
+
+  async saveStep2(id: string, creatorId: string, data: Record<string, unknown>) {
+    return reportRepository.saveStep2(id, creatorId, data);
+  },
+
+  async saveStep3(id: string, creatorId: string, data: Record<string, unknown>) {
+    return reportRepository.saveStep3(id, creatorId, data);
+  },
+
+  async saveStep4(id: string, creatorId: string, data: Step4Input) {
+    return reportRepository.saveStep4(id, creatorId, data);
+  },
+
+  async saveStep5(id: string, creatorId: string) {
+    return reportRepository.saveStep5(id, creatorId);
+  },
+
+  async autosave(id: string, creatorId: string, payload: Record<string, unknown>) {
+    return reportRepository.autosave(id, creatorId, payload);
+  },
+
+  async listReports(
+    creatorId: string,
+    query: { page: number; limit: number; search?: string; status?: string },
+  ) {
+    return reportRepository.listReports(creatorId, query);
+  },
+
+  async deleteReport(id: string, creatorId: string) {
+    return reportRepository.deleteReport(id, creatorId);
+  },
+
   /**
    * Validate that all required fields are filled before finalization.
    */

@@ -1,5 +1,5 @@
 import apiClient from "@/shared/api/client";
-import type { ReportPhoto } from "@/types";
+import type { ReportPhoto } from "@/features/reports/types";
 
 const API_BASE = "/api";
 

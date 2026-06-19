@@ -1,6 +1,19 @@
 # AvtoExpert Backend
 
-Express + TypeScript backend с modular-структурой, Drizzle ORM и PostgreSQL.
+Express + TypeScript backend с модульной структурой, Drizzle ORM и PostgreSQL.
+
+## Архитектура
+
+- каждый модуль в `src/modules/*` организован по схеме `routes -> service -> repository`;
+- routes остаются thin: парсят запрос, вызывают service и возвращают ответ;
+- бизнес-оркестрация сосредоточена в service-слое;
+- доступ к БД и SQL-логика сосредоточены в repository-слое;
+- Zod-схемы лежат рядом с модулями и используются через middleware `validate()`.
+
+Это особенно важно для модулей:
+
+- `reports`: создание черновика, загрузка шагов, autosave, финализация и генерация документа идут через service;
+- `admin`: template upload валидируется отдельной schema, а список отчётов использует общий repository-метод.
 
 ## Структура
 
@@ -10,23 +23,37 @@ src/
   server.ts              # запуск HTTP-сервера
   config/                # env/config
   db/                    # Drizzle schema, connection, seed
-  common/                # общие middleware, errors, schemas
-  shared/                # shared infrastructure
+  common/                # middleware, errors, common schemas
+  shared/                # logger, storage и общая инфраструктура
   modules/
     auth/
+      *.routes.ts
+      *.schemas.ts
+      *.service.ts
     experts/
+      *.routes.ts
+      *.schemas.ts
+      *.service.ts
     reports/
+      reports.routes.ts
+      reports.schemas.ts
+      reports.service.ts
+      reports.repository.ts
+      docGenerator.ts
     admin/
+      admin.routes.ts
+      admin.schemas.ts
+      admin.service.ts
 ```
 
 ## Что делает backend
 
-- авторизация и получение текущего пользователя
-- CRUD для экспертов
-- CRUD для заключений
-- загрузка и удаление фотографий
-- генерация и скачивание документов
-- административные маршруты
+- авторизация и получение текущего пользователя;
+- CRUD для экспертов;
+- CRUD для заключений;
+- загрузка и удаление фотографий;
+- генерация и скачивание документов;
+- административные маршруты и работа с шаблоном DOCX.
 
 Основные маршруты:
 
@@ -38,6 +65,7 @@ src/
 - `GET /api/reports/:id/download`
 - `GET/POST/DELETE /api/reports/:id/photos`
 - `GET /api/admin/*`
+- `POST /api/admin/template`
 
 ## Env
 
@@ -65,6 +93,7 @@ npm run build
 npm run start
 npm run lint
 npm run format
+npx tsc --noEmit
 npm run docker:db:up
 npm run docker:db:down
 npm run db:generate
@@ -73,7 +102,7 @@ npm run db:studio
 npm run db:seed
 ```
 
-## Локальный запуск отдельно
+## Локальный запуск
 
 ### 1. Поднять PostgreSQL
 
@@ -83,7 +112,7 @@ npm run db:seed
 npm run docker:db:up
 ```
 
-Либо поднять PostgreSQL любым другим способом и указать правильный `DATABASE_URL`.
+Либо поднять PostgreSQL любым другим способом и указать корректный `DATABASE_URL`.
 
 ### 2. Применить миграции и seed
 

@@ -1,4 +1,4 @@
-﻿import { Router } from 'express';
+import { Router } from 'express';
 import type { z } from 'zod';
 import {
   type AuthRequest,
@@ -10,8 +10,6 @@ import {
   photoParamsSchema,
   uuidParamsSchema,
 } from '../../common/schemas/common.js';
-import { expertService } from '../experts/experts.service.js';
-import { reportRepository } from './reports.repository.js';
 import {
   autosaveSchema,
   createReportSchema,
@@ -36,21 +34,8 @@ router.post(
   validate({ body: createReportSchema }),
   async (req: AuthRequest, res) => {
     const data = req.body as z.infer<typeof createReportSchema>;
-    const creatorId = getCreatorId(req);
-
-    const expert = await expertService.verifyOwnership(creatorId, data.expert_id);
-    if (!expert) {
-      const { badRequest } = await import('../../common/errors/httpError.js');
-      throw badRequest('Expert does not belong to current creator');
-    }
-
-    const newReport = await reportRepository.createReport(creatorId, data);
-    res.status(201).json({
-      id: newReport.id,
-      status: newReport.status,
-      current_step: newReport.currentStep,
-      message: 'Draft created',
-    });
+    const result = await reportService.createReport(getCreatorId(req), data);
+    res.status(201).json(result);
   },
 );
 
@@ -59,11 +44,7 @@ router.patch(
   authMiddleware,
   validate({ params: uuidParamsSchema, body: step2Schema }),
   async (req: AuthRequest, res) => {
-    await reportRepository.saveStep2(
-      req.params.id as string,
-      getCreatorId(req),
-      req.body,
-    );
+    await reportService.saveStep2(req.params.id as string, getCreatorId(req), req.body);
     res.json({ message: 'Step 2 saved' });
   },
 );
@@ -73,11 +54,7 @@ router.patch(
   authMiddleware,
   validate({ params: uuidParamsSchema, body: step3Schema }),
   async (req: AuthRequest, res) => {
-    await reportRepository.saveStep3(
-      req.params.id as string,
-      getCreatorId(req),
-      req.body,
-    );
+    await reportService.saveStep3(req.params.id as string, getCreatorId(req), req.body);
     res.json({ message: 'Step 3 saved' });
   },
 );
@@ -87,11 +64,7 @@ router.patch(
   authMiddleware,
   validate({ params: uuidParamsSchema, body: step4Schema }),
   async (req: AuthRequest, res) => {
-    await reportRepository.saveStep4(
-      req.params.id as string,
-      getCreatorId(req),
-      req.body as Step4Input,
-    );
+    await reportService.saveStep4(req.params.id as string, getCreatorId(req), req.body as Step4Input);
     res.json({ message: 'Step 4 saved' });
   },
 );
@@ -101,10 +74,7 @@ router.patch(
   authMiddleware,
   validate({ params: uuidParamsSchema, body: step5Schema }),
   async (req: AuthRequest, res) => {
-    await reportRepository.saveStep5(
-      req.params.id as string,
-      getCreatorId(req),
-    );
+    await reportService.saveStep5(req.params.id as string, getCreatorId(req));
     res.json({ message: 'Step 5 saved' });
   },
 );
@@ -114,11 +84,7 @@ router.patch(
   authMiddleware,
   validate({ params: uuidParamsSchema, body: autosaveSchema }),
   async (req: AuthRequest, res) => {
-    await reportRepository.autosave(
-      req.params.id as string,
-      getCreatorId(req),
-      req.body as Record<string, unknown>,
-    );
+    await reportService.autosave(req.params.id as string, getCreatorId(req), req.body as Record<string, unknown>);
     res.json({ saved_at: new Date().toISOString() });
   },
 );
@@ -129,7 +95,7 @@ router.get(
   validate({ query: reportsQuerySchema }),
   async (req: AuthRequest, res) => {
     const query = req.query as unknown as z.infer<typeof reportsQuerySchema>;
-    const result = await reportRepository.listReports(getCreatorId(req), query);
+    const result = await reportService.listReports(getCreatorId(req), query);
     res.json(result);
   },
 );
@@ -139,17 +105,8 @@ router.get(
   authMiddleware,
   validate({ params: uuidParamsSchema }),
   async (req: AuthRequest, res) => {
-    const id = req.params.id as string;
-    const report = await reportRepository.getOwnedReport(id, getCreatorId(req));
-    const collections = await reportRepository.getStep4Collections(id);
-
-    res.json({
-      ...report,
-      repair_works: collections.repairWorksList,
-      paint_works: collections.paintWorksList,
-      spare_parts: collections.sparePartsList,
-      materials: collections.materialsList,
-    });
+    const result = await reportService.getFullReport(getCreatorId(req), req.params.id as string);
+    res.json(result);
   },
 );
 
@@ -158,10 +115,7 @@ router.delete(
   authMiddleware,
   validate({ params: uuidParamsSchema }),
   async (req: AuthRequest, res) => {
-    await reportRepository.deleteReport(
-      req.params.id as string,
-      getCreatorId(req),
-    );
+    await reportService.deleteReport(req.params.id as string, getCreatorId(req));
     res.json({ message: 'Draft deleted' });
   },
 );
@@ -171,10 +125,7 @@ router.post(
   authMiddleware,
   validate({ params: uuidParamsSchema }),
   async (req: AuthRequest, res) => {
-    const result = await reportService.finalizeAndGenerate(
-      getCreatorId(req),
-      req.params.id as string,
-    );
+    const result = await reportService.finalizeAndGenerate(getCreatorId(req), req.params.id as string);
     res.json(result);
   },
 );
@@ -184,10 +135,7 @@ router.get(
   authMiddleware,
   validate({ params: uuidParamsSchema }),
   async (req: AuthRequest, res) => {
-    const { filePath, filename } = await reportService.getDownloadPath(
-      getCreatorId(req),
-      req.params.id as string,
-    );
+    const { filePath, filename } = await reportService.getDownloadPath(getCreatorId(req), req.params.id as string);
     res.download(filePath, filename);
   },
 );
@@ -199,11 +147,7 @@ router.post(
   uploadPhotos,
   async (req: AuthRequest, res) => {
     const files = (req.files as Express.Multer.File[] | undefined) ?? [];
-    const result = await reportService.uploadPhotos(
-      getCreatorId(req),
-      req.params.id as string,
-      files,
-    );
+    const result = await reportService.uploadPhotos(getCreatorId(req), req.params.id as string, files);
     res.json(result);
   },
 );
@@ -213,11 +157,7 @@ router.delete(
   authMiddleware,
   validate({ params: photoParamsSchema }),
   async (req: AuthRequest, res) => {
-    await reportService.deletePhoto(
-      getCreatorId(req),
-      req.params.id as string,
-      req.params.photoId as string,
-    );
+    await reportService.deletePhoto(getCreatorId(req), req.params.id as string, req.params.photoId as string);
     res.json({ message: 'Photo deleted' });
   },
 );
@@ -227,10 +167,7 @@ router.get(
   authMiddleware,
   validate({ params: uuidParamsSchema }),
   async (req: AuthRequest, res) => {
-    const result = await reportService.listPhotos(
-      getCreatorId(req),
-      req.params.id as string,
-    );
+    const result = await reportService.listPhotos(getCreatorId(req), req.params.id as string);
     res.json(result);
   },
 );
@@ -240,11 +177,7 @@ router.get(
   authMiddleware,
   validate({ params: photoParamsSchema }),
   async (req: AuthRequest, res) => {
-    const filePath = await reportService.getPhotoFile(
-      getCreatorId(req),
-      req.params.id as string,
-      req.params.photoId as string,
-    );
+    const filePath = await reportService.getPhotoFile(getCreatorId(req), req.params.id as string, req.params.photoId as string);
     res.sendFile(filePath);
   },
 );

@@ -2,11 +2,25 @@
 
 React + TypeScript + Vite frontend для AvtoExpert.
 
+## Архитектура
+
+- `features/*` содержит бизнес-модули приложения: `auth`, `admin`, `reports`.
+- `features/<module>/api` хранит модульный доступ к backend API.
+- `features/<module>/types` хранит модульные типы для конкретной feature.
+- `features/<module>/ui` хранит экранные модули и привязанный к ним UI.
+- `features/reports/hooks` хранит report-specific hooks, используемые только в рамках feature.
+- `features/reports/model` хранит report-specific zustand store.
+- `features/reports/lib` хранит report-specific helpers, validators и mappers.
+- `shared/*` содержит общие примитивы: `api`, `auth`, `ui`, `lib`, `types`.
+- `shared/auth` хранит общий auth store и типы, используемые и в `app`, и в `features/*`.
+- `app/*` содержит app-level слои, которые не являются UI-примитивами, например routing и error boundary.
+- `pages/*` больше не содержит полноценные экраны, а выступает как route-shell с простыми реэкспортами из `features/*`.
+
 ## Как frontend работает с API
 
 Frontend использует относительный путь `/api` во всех запросах.
 
-В dev-режиме `Vite` proxy (настроен в `vite.config.ts`) перенаправляет `/api` на `http://localhost:3000`.
+В dev-режиме `Vite` proxy, настроенный в `vite.config.ts`, перенаправляет `/api` на `http://localhost:3000`.
 
 Отдельный `frontend/.env` для `VITE_API_BASE_URL` не нужен.
 
@@ -14,12 +28,32 @@ Frontend использует относительный путь `/api` во в
 
 ```text
 src/
-  components/
-  pages/
-  services/
-  store/
-  types/
-  utils/
+  app/
+    errors/                # ErrorBoundary и app-level error handling
+    routing/               # PrivateRoute и app-level routing guards
+  features/
+    auth/
+      api/
+      types/
+      ui/
+    admin/
+      api/
+      types/
+      ui/
+    reports/
+      api/
+      hooks/
+      lib/
+      model/
+      types/
+      ui/
+  shared/
+    api/                   # base API client
+    auth/                  # shared auth store
+    lib/
+    types/                 # shared cross-feature types
+    ui/                    # reusable UI primitives
+  pages/                  # route-shell реэкспорты
   App.tsx
   main.tsx
 ```
@@ -30,11 +64,12 @@ src/
 npm install
 npm run dev
 npm run build
+npx tsc --noEmit
 npm run lint
 npm run preview
 ```
 
-## Локальный запуск отдельно
+## Локальный запуск
 
 ### 1. Убедиться, что backend уже запущен
 
@@ -56,7 +91,7 @@ Frontend будет доступен на:
 http://localhost:5173
 ```
 
-Запросы из браузера на `/api` будут автоматически проксироваться через `vite.config.ts`.
+Запросы из браузера на `/api` автоматически проксируются через `vite.config.ts`.
 
 ## Build
 
@@ -66,7 +101,10 @@ npm run build
 
 Сборка попадает в `frontend/dist`.
 
-## Текущий режим
+## Проверка после изменений
 
-Сейчас frontend используется в dev-режиме (`vite dev`) и сборке через `vite build`.
+Для быстрой типовой проверки:
 
+```bash
+npx tsc --noEmit
+```

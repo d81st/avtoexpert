@@ -1,6 +1,13 @@
 # AvtoExpert Pro
 
-Текущий режим проекта: локальная разработка `backend + frontend`, Docker используется только для PostgreSQL.
+Локальная разработка идёт в режиме `backend + frontend`, Docker используется только для PostgreSQL.
+
+## Архитектура
+
+- `frontend` построен вокруг feature-структуры: `app/*` для app-level слоёв, `features/*` для бизнес-модулей, `shared/*` для общих примитивов, `pages/*` только для route-shell.
+- `backend` использует модульную структуру `routes -> service -> repository`, где HTTP-роуты остаются thin и не содержат бизнес-оркестрации.
+- общего root `package.json` нет, `backend` и `frontend` запускаются отдельно.
+- frontend использует относительный путь `/api`, а в dev-режиме `Vite` proxy отправляет запросы на `http://localhost:3000`.
 
 ## Структура
 
@@ -8,22 +15,48 @@
 avtoexpert-pro/
   backend/
     src/
+      common/              # middleware, errors, shared schemas
+      db/                  # schema, connection, seed
+      modules/
+        auth/
+        experts/
+        reports/
+        admin/
+      shared/              # storage, logger, infra
     docker-compose.yml     # только PostgreSQL
     package.json
   frontend/
     src/
+      app/
+        errors/
+        routing/
+      features/
+        auth/
+          api/
+          types/
+          ui/
+        admin/
+          api/
+          types/
+          ui/
+        reports/
+          api/
+          hooks/
+          lib/
+          model/
+          types/
+          ui/
+      shared/              # api client, auth state, ui, lib, shared types
+        auth/
+        api/
+        lib/
+        types/
+        ui/
+      pages/               # route-shell реэкспорты
     public/
     vite.config.ts
     package.json
 ```
-
-## Как теперь работает проект
-
-- `backend` запускается отдельно из `backend`
-- `frontend` запускается отдельно из `frontend`
-- общего root `package.json` больше нет
-- frontend использует относительный путь `/api`
-- в dev режиме `Vite` proxy отправляет `/api` на `http://localhost:3000`
 
 ## Env-файлы
 
@@ -32,11 +65,11 @@ avtoexpert-pro/
 - `backend/.env`
 - `backend/.env.example`
 
-Для frontend отдельный `.env` не нужен.
+Для frontend отдельный `.env` сейчас не нужен.
 
 ## Быстрый запуск
 
-### 1. Установить зависимости отдельно
+### 1. Установить зависимости
 
 В `backend`:
 
@@ -63,13 +96,13 @@ CORS_ORIGIN=http://localhost:5173
 
 ### 3. Поднять PostgreSQL
 
-Если база запускается через Docker внутри WSL, перейдите в `backend` и выполните:
+Если база запускается через Docker, перейдите в `backend` и выполните:
 
 ```bash
 npm run docker:db:up
 ```
 
-Если PostgreSQL установлен локально без Docker, достаточно чтобы `DATABASE_URL` указывал на рабочую БД.
+Если PostgreSQL установлен локально без Docker, достаточно рабочего `DATABASE_URL`.
 
 ### 4. Применить миграции и seed
 
