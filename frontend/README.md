@@ -71,27 +71,35 @@ npm run preview
 
 ## Локальный запуск
 
-### 1. Убедиться, что backend уже запущен
+### Предварительные условия
 
-Ожидаемый адрес backend:
+Backend должен быть уже запущен на `http://localhost:3000`.
 
-```txt
-http://localhost:3000
-```
+Инструкции по запуску backend:
+- [Docker Desktop (Windows)](../README.md#вариант-a-docker-desktop-на-windows)
+- [Docker в WSL](../README.md#вариант-b-docker-установлен-внутри-wsl)
 
-### 2. Запустить frontend
+### Запуск frontend
 
 ```bash
+# 1. Установить зависимости (если ещё не установлены)
+npm install
+
+# 2. Запустить dev-сервер
 npm run dev
 ```
 
 Frontend будет доступен на:
 
-```txt
+```
 http://localhost:5173
 ```
 
-Запросы из браузера на `/api` автоматически проксируются через `vite.config.ts`.
+Запросы на `/api` автоматически проксируются через `vite.config.ts` на `http://localhost:3000`.
+
+### Проверка connectivity
+
+Откройте браузер и перейдите на `http://localhost:5173`. Если backend работает корректно, страница должна загрузиться без ошибок подключения.
 
 ## Build
 

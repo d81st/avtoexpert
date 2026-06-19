@@ -104,35 +104,60 @@ npm run db:seed
 
 ## Локальный запуск
 
-### 1. Поднять PostgreSQL
-
-Из `backend` можно использовать:
+### Вариант A: Docker Desktop на Windows
 
 ```bash
-npm run docker:db:up
-```
+# 1. Поднять PostgreSQL
+docker compose up -d postgres
 
-Либо поднять PostgreSQL любым другим способом и указать корректный `DATABASE_URL`.
-
-### 2. Применить миграции и seed
-
-```bash
+# 2. Применить миграции
 npm run db:migrate
+
+# 3. Загрузить тестовые данные
 npm run db:seed
-```
 
-Тестовый доступ после seed:
-
-- логин: `taev`
-- пароль: `secret`
-
-### 3. Запустить backend
-
-```bash
+# 4. Запустить backend
 npm run dev
 ```
 
 Backend будет доступен на `http://localhost:3000`.
+
+### Вариант B: Docker установлен в WSL
+
+```bash
+# 1. Поднять PostgreSQL (скрипт автоматически использует WSL Docker)
+npm run docker:db:up
+
+# 2. Применить миграции
+npm run db:migrate
+
+# 3. Загрузить тестовые данные
+npm run db:seed
+
+# 4. Запустить backend
+npm run dev
+```
+
+Backend будет доступен на `http://localhost:3000`.
+
+### Скрипты Docker для управления БД
+
+При работе с Docker в WSL используйте встроенные скрипты:
+
+```bash
+# Поднять PostgreSQL контейнер
+npm run docker:db:up
+
+# Остановить контейнер
+npm run docker:db:down
+```
+
+Если Docker Desktop установлен на Windows, используйте `docker compose` напрямую:
+
+```bash
+docker compose up -d postgres      # Поднять
+docker compose down                 # Остановить
+```
 
 Health endpoint:
 
