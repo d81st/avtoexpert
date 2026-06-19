@@ -1,10 +1,10 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuthStore } from "@/shared/auth/useAuthStore";
-import type { AdminTab } from "@/features/admin/types";
-import AdminReportsTab from "@/features/admin/ui/AdminReportsTab";
-import AdminCreatorsTab from "@/features/admin/ui/AdminCreatorsTab";
-import AdminTemplateTab from "@/features/admin/ui/AdminTemplateTab";
+import type { AdminTab } from "../types";
+import AdminReportsTab from "./AdminReportsTab";
+import AdminCreatorsTab from "./AdminCreatorsTab";
+import AdminTemplateTab from "./AdminTemplateTab";
 import Loader from "@/shared/ui/Loader";
 import Button from "@/shared/ui/Button";
 

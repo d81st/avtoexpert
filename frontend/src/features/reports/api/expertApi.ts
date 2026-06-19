@@ -1,5 +1,5 @@
 import apiClient from "@/shared/api/client";
-import type { Expert } from "@/features/reports/types";
+import type { Expert } from "../types";
 
 export const expertService = {
   async getExperts(): Promise<Expert[]> {

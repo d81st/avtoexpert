@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useState } from "react";
 import type { ChangeEvent, DragEvent } from "react";
 import { ACCEPTED_PHOTO_TYPES, MAX_PHOTOS } from "@/constants/reference";
-import { photoService } from "@/features/reports/api/photoApi";
-import { useFormStore } from "@/features/reports/model/useFormStore";
-import { useReportStore } from "@/features/reports/model/useReportStore";
-import type { ReportPhoto } from "@/features/reports/types";
+import { photoService } from "../api/photoApi";
+import { useFormStore } from "../model/useFormStore";
+import { useReportStore } from "../model/useReportStore";
+import type { ReportPhoto } from "../types";
 
 export function usePhotoUpload() {
   const { step5, setStep5 } = useFormStore();

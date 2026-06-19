@@ -1,9 +1,10 @@
 import { useEffect } from "react";
 import { MAX_PHOTOS } from "@/constants/reference";
-import { usePhotoUpload } from "@/features/reports/hooks/usePhotoUpload";
-import { useFormStore } from "@/features/reports/model/useFormStore";
-import { calcGrandTotal, formatSum } from "@/features/reports/lib/calculations";
-import { validateStep5 } from "@/features/reports/lib/validators";
+import { formatSum } from "@/shared/lib/formatters";
+import { usePhotoUpload } from "../hooks/usePhotoUpload";
+import { useFormStore } from "../model/useFormStore";
+import { calcGrandTotal } from "../lib/calculations";
+import { validateStep5 } from "../lib/validators";
 import Alert from "@/shared/ui/Alert";
 import Button from "@/shared/ui/Button";
 

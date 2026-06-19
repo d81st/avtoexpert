@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useFormStore } from "@/features/reports/model/useFormStore";
-import type { Material, PaintWork, RepairWork, SparePart, Step4Data } from "@/features/reports/types";
-import { calcRepairWorkPrice } from "@/features/reports/lib/calculations";
-import { validateStep4 } from "@/features/reports/lib/validators";
-import { useEditableList } from "@/features/reports/hooks/useEditableList";
+import { useFormStore } from "../model/useFormStore";
+import type { Material, PaintWork, RepairWork, SparePart, Step4Data } from "../types";
+import { calcRepairWorkPrice } from "../lib/calculations";
+import { validateStep4 } from "../lib/validators";
+import { useEditableList } from "./useEditableList";
 
 interface UseStep4LogicParams {
   onValidationChange: (isValid: boolean) => void;

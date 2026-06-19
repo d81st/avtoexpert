@@ -1,7 +1,6 @@
-import { useCallback, useEffect, useState } from "react";
-import { useFormStore } from "@/features/reports/model/useFormStore";
-import { reportService } from "@/features/reports/api/reportApi";
-import { debounce } from "@/features/reports/lib/debounce";
+import { useEffect, useState } from "react";
+import { useFormStore } from "../model/useFormStore";
+import { reportService } from "../api/reportApi";
 
 interface UseReportAutosaveParams {
   reportId?: string;
@@ -15,34 +14,22 @@ export function useReportAutosave({
   const { step2, step3, step4 } = useFormStore();
   const [isSaving, setIsSaving] = useState(false);
 
-  const autosaveReport = useCallback(
-    debounce(async (id: string) => {
-      if (!id || currentStep === 1) return;
+  useEffect(() => {
+    if (!reportId || currentStep === 1) return;
 
+    const timeoutId = setTimeout(async () => {
       setIsSaving(true);
       try {
-        await reportService.autosave(id, { step2, step3, step4 });
+        await reportService.autosave(reportId, { step2, step3, step4 });
       } catch (err) {
         console.error("Autosave error:", err);
       } finally {
         setIsSaving(false);
       }
-    }, 30000),
-    [currentStep, step2, step3, step4],
-  );
+    }, 30_000);
 
-  useEffect(() => {
-    if (reportId && currentStep > 1) {
-      autosaveReport(reportId);
-    }
-  }, [
-    step2,
-    step3,
-    step4,
-    reportId,
-    currentStep,
-    autosaveReport,
-  ]);
+    return () => clearTimeout(timeoutId);
+  }, [currentStep, reportId, step2, step3, step4]);
 
   return { isSaving };
 }

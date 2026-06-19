@@ -1,18 +1,18 @@
 import { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { useReportWizard } from "@/features/reports/hooks/useReportWizard";
-import { useReportAutosave } from "@/features/reports/hooks/useReportAutosave";
-import { useReportFinalize } from "@/features/reports/hooks/useReportFinalize";
-import { useReportStore } from "@/features/reports/model/useReportStore";
-import Wizard from "@/features/reports/ui/Wizard";
-import WizardNavigation from "@/features/reports/ui/WizardNavigation";
+import { useReportWizard } from "../hooks/useReportWizard";
+import { useReportAutosave } from "../hooks/useReportAutosave";
+import { useReportFinalize } from "../hooks/useReportFinalize";
+import { useReportStore } from "../model/useReportStore";
+import Wizard from "./Wizard";
+import WizardNavigation from "./WizardNavigation";
 import Loader from "@/shared/ui/Loader";
 import Alert from "@/shared/ui/Alert";
-import Step1 from "@/features/reports/ui/Step1";
-import Step2 from "@/features/reports/ui/Step2";
-import Step3 from "@/features/reports/ui/Step3";
-import Step4 from "@/features/reports/ui/Step4";
-import Step5 from "@/features/reports/ui/Step5";
+import Step1 from "./Step1";
+import Step2 from "./Step2";
+import Step3 from "./Step3";
+import Step4 from "./Step4";
+import Step5 from "./Step5";
 
 const TOTAL_STEPS = 5;
 

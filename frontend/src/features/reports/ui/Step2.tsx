@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
-import { useFormStore } from '@/features/reports/model/useFormStore';
-import type { Step2Data } from '@/features/reports/types';
-import { validateStep2 } from '@/features/reports/lib/validators';
+import { useFormStore } from '../model/useFormStore';
+import type { Step2Data } from '../types';
+import { validateStep2 } from '../lib/validators';
 import {
   BODY_TYPES,
   CAR_MODELS,
@@ -36,10 +36,6 @@ function Step2({ onValidationChange }: { onValidationChange: (isValid: boolean) 
   const { step2, setStep2 } = useFormStore();
   const [data, setData] = useState<Step2Data>(step2 || EMPTY_STEP2);
   const [touched, setTouched] = useState<Record<string, boolean>>({});
-
-  useEffect(() => {
-    if (step2) setData(step2);
-  }, [step2]);
 
   useEffect(() => {
     onValidationChange(validateStep2(data));

@@ -1,6 +1,6 @@
 import apiClient from "@/shared/api/client";
 import { useAuthStore } from "@/shared/auth/useAuthStore";
-import type { LoginResponse } from "@/features/auth/types";
+import type { LoginResponse } from "../types";
 
 export const authService = {
   async login(login: string, password: string): Promise<LoginResponse> {

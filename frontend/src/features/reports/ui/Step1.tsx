@@ -1,11 +1,19 @@
-import { useEffect, useRef, useState } from "react";
-import { useFormStore } from "@/features/reports/model/useFormStore";
-import { useExperts } from "@/features/reports/hooks/useExperts";
-import { validateStep1 } from "@/features/reports/lib/validators";
-
+import { useEffect } from "react";
+import { useForm, useWatch } from "react-hook-form";
+import { useFormStore } from "../model/useFormStore";
+import { useExperts } from "../hooks/useExperts";
+import { validateStep1 } from "../lib/validators";
+import type { Step1Data } from "../types";
 import Alert from "@/shared/ui/Alert";
-import ExpertManagerModal from "@/features/reports/ui/ExpertManagerModal";
+import ExpertManagerModal from "./ExpertManagerModal";
 import Input from "@/shared/ui/Input";
+
+const EMPTY_STEP1: Step1Data = {
+  expert_id: "",
+  report_number: "",
+  report_date: "",
+  application_date: "",
+};
 
 function Step1({
   onValidationChange,
@@ -13,13 +21,16 @@ function Step1({
   onValidationChange: (isValid: boolean) => void;
 }) {
   const { step1, setStep1 } = useFormStore();
-
-  const [expertId, setExpertId] = useState("");
-  const [reportNumber, setReportNumber] = useState("");
-  const [reportDate, setReportDate] = useState("");
-  const [applicationDate, setApplicationDate] = useState("");
-  const [touched, setTouched] = useState<Record<string, boolean>>({});
-  const initializedRef = useRef(false);
+  const {
+    register,
+    setValue,
+    control,
+    formState: { touchedFields, errors },
+  } = useForm<Step1Data>({
+    mode: "onBlur",
+    defaultValues: step1 ?? EMPTY_STEP1,
+  });
+  const formData = useWatch({ control }) as Step1Data;
 
   const {
     experts,
@@ -39,68 +50,29 @@ function Step1({
     handleDeleteExpert,
     openEditExpert,
   } = useExperts({
-    selectedExpertId: expertId,
-    onSelectExpert: setExpertId,
+    selectedExpertId: formData.expert_id,
+    onSelectExpert: (id) =>
+      setValue("expert_id", id, {
+        shouldDirty: true,
+        shouldTouch: true,
+        shouldValidate: true,
+      }),
   });
 
   useEffect(() => {
-    if (!initializedRef.current && step1) {
-      initializedRef.current = true;
-      setExpertId(step1.expert_id);
-      setReportNumber(step1.report_number);
-      setReportDate(step1.report_date);
-      setApplicationDate(step1.application_date);
-    }
-  }, [step1]);
-
-  useEffect(() => {
-    onValidationChange(validateStep1({
-      expert_id: expertId,
-      report_number: reportNumber,
-      report_date: reportDate,
-      application_date: applicationDate,
-    }));
-  }, [expertId, reportNumber, reportDate, applicationDate, onValidationChange]);
-
-  useEffect(() => {
-    setStep1({
-      expert_id: expertId,
-      report_number: reportNumber,
-      report_date: reportDate,
-      application_date: applicationDate,
-    });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [expertId, reportNumber, reportDate, applicationDate]);
-
-  const handleBlur = (field: string) => {
-    setTouched((prev) => ({ ...prev, [field]: true }));
-  };
-
-  const getFieldError = (field: string) => {
-    if (!touched[field]) return null;
-
-    switch (field) {
-      case "expertId":
-        return !expertId ? "Выберите эксперта" : null;
-      case "reportNumber":
-        return !reportNumber ? "Введите номер заключения" : null;
-      case "reportDate":
-        return !reportDate ? "Выберите дату заключения" : null;
-      case "applicationDate":
-        return !applicationDate ? "Выберите дату подачи заявки" : null;
-      default:
-        return null;
-    }
-  };
+    const nextData = { ...EMPTY_STEP1, ...formData };
+    setStep1(nextData);
+    onValidationChange(validateStep1(nextData));
+  }, [formData, onValidationChange, setStep1]);
 
   return (
     <div>
       <div className="mb-6">
         <h2 className="text-2xl font-bold text-gray-800">
-          Шаг 1: Основная информация
+          РЁР°Рі 1: РћСЃРЅРѕРІРЅР°СЏ РёРЅС„РѕСЂРјР°С†РёСЏ
         </h2>
         <p className="text-sm text-gray-600 mt-2">
-          Укажите основные данные для заключения об экспертизе
+          РЈРєР°Р¶РёС‚Рµ РѕСЃРЅРѕРІРЅС‹Рµ РґР°РЅРЅС‹Рµ РґР»СЏ Р·Р°РєР»СЋС‡РµРЅРёСЏ РѕР± СЌРєСЃРїРµСЂС‚РёР·Рµ
         </p>
       </div>
 
@@ -115,39 +87,38 @@ function Step1({
               htmlFor="expert"
               className="block text-sm font-medium text-gray-700"
             >
-              Эксперт <span className="text-red-500">*</span>
+              Р­РєСЃРїРµСЂС‚ <span className="text-red-500">*</span>
             </label>
             <button
               type="button"
               onClick={openExpertModal}
               className="text-sm text-blue-600 hover:text-blue-800"
             >
-              + Добавить эксперта
+              + Р”РѕР±Р°РІРёС‚СЊ СЌРєСЃРїРµСЂС‚Р°
             </button>
           </div>
           <select
             id="expert"
-            value={expertId}
-            onChange={(event) => setExpertId(event.target.value)}
-            onBlur={() => handleBlur("expertId")}
             disabled={isLoading}
             className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors ${
-              touched["expertId"] && getFieldError("expertId")
+              touchedFields.expert_id && errors.expert_id
                 ? "border-red-300 bg-red-50"
                 : "border-gray-300"
             } disabled:opacity-50 disabled:cursor-not-allowed`}
-            required
+            {...register("expert_id", {
+              required: "Р’С‹Р±РµСЂРёС‚Рµ СЌРєСЃРїРµСЂС‚Р°",
+            })}
           >
-            <option value="">Выберите эксперта из списка</option>
+            <option value="">Р’С‹Р±РµСЂРёС‚Рµ СЌРєСЃРїРµСЂС‚Р° РёР· СЃРїРёСЃРєР°</option>
             {experts.map((expert) => (
               <option key={expert.id} value={expert.id}>
                 {expert.full_name}
               </option>
             ))}
           </select>
-          {touched["expertId"] && getFieldError("expertId") && (
+          {touchedFields.expert_id && errors.expert_id?.message && (
             <p className="text-red-500 text-sm mt-1">
-              {getFieldError("expertId")}
+              {errors.expert_id.message}
             </p>
           )}
         </div>
@@ -155,47 +126,39 @@ function Step1({
         <Input
           type="text"
           id="reportNumber"
-          label="Номер заключения"
-          value={reportNumber}
-          onChange={(event) => setReportNumber(event.target.value)}
-          onBlur={() => handleBlur("reportNumber")}
-          error={
-            touched["reportNumber"]
-              ? (getFieldError("reportNumber") ?? undefined)
-              : undefined
-          }
-          placeholder="Например: 2024-001"
+          label="РќРѕРјРµСЂ Р·Р°РєР»СЋС‡РµРЅРёСЏ"
+          error={touchedFields.report_number ? errors.report_number?.message : undefined}
+          placeholder="РќР°РїСЂРёРјРµСЂ: 2024-001"
           required
+          {...register("report_number", {
+            required: "Р’РІРµРґРёС‚Рµ РЅРѕРјРµСЂ Р·Р°РєР»СЋС‡РµРЅРёСЏ",
+          })}
         />
 
         <Input
           type="date"
           id="reportDate"
-          label="Дата заключения"
-          value={reportDate}
-          onChange={(event) => setReportDate(event.target.value)}
-          onBlur={() => handleBlur("reportDate")}
-          error={
-            touched["reportDate"]
-              ? (getFieldError("reportDate") ?? undefined)
-              : undefined
-          }
+          label="Р”Р°С‚Р° Р·Р°РєР»СЋС‡РµРЅРёСЏ"
+          error={touchedFields.report_date ? errors.report_date?.message : undefined}
           required
+          {...register("report_date", {
+            required: "Р’С‹Р±РµСЂРёС‚Рµ РґР°С‚Сѓ Р·Р°РєСЋС‡РµРЅРёСЏ",
+          })}
         />
 
         <Input
           type="date"
           id="applicationDate"
-          label="Дата подачи заявки"
-          value={applicationDate}
-          onChange={(event) => setApplicationDate(event.target.value)}
-          onBlur={() => handleBlur("applicationDate")}
+          label="Р”Р°С‚Р° РїРѕРґР°С‡Рё Р·Р°СЏРІРєРё"
           error={
-            touched["applicationDate"]
-              ? (getFieldError("applicationDate") ?? undefined)
+            touchedFields.application_date
+              ? errors.application_date?.message
               : undefined
           }
           required
+          {...register("application_date", {
+            required: "Р’С‹Р±РµСЂРёС‚Рµ РґР°С‚Сѓ РїРѕРґР°С‡Рё Р·Р°СЏРІРєРё",
+          })}
         />
       </div>
 

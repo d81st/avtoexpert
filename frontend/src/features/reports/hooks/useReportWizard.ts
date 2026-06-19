@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useFormStore } from "@/features/reports/model/useFormStore";
-import { useReportStore } from "@/features/reports/model/useReportStore";
-import { reportService } from "@/features/reports/api/reportApi";
-import { normalizeReport } from "@/features/reports/lib/reportMapper";
+import { useFormStore } from "../model/useFormStore";
+import { useReportStore } from "../model/useReportStore";
+import { reportService } from "../api/reportApi";
+import { normalizeReport } from "../lib/reportMapper";
 
 interface UseReportWizardParams {
   id?: string;

@@ -1,7 +1,11 @@
-import { useCallback, useEffect, useState } from "react";
-import { expertService } from "@/features/reports/api/expertApi";
-import { useReportStore } from "@/features/reports/model/useReportStore";
-import type { Expert } from "@/features/reports/types";
+import { useState } from "react";
+import type { Expert } from "../types";
+import {
+  useCreateExpertMutation,
+  useDeleteExpertMutation,
+  useExpertsQuery,
+  useUpdateExpertMutation,
+} from "../model/expertQueries";
 
 interface UseExpertsParams {
   selectedExpertId: string;
@@ -12,32 +16,18 @@ export function useExperts({
   selectedExpertId,
   onSelectExpert,
 }: UseExpertsParams) {
-  const { experts, setExperts, isLoading, error, setError } = useReportStore();
+  const expertsQuery = useExpertsQuery();
+  const createExpertMutation = useCreateExpertMutation();
+  const updateExpertMutation = useUpdateExpertMutation();
+  const deleteExpertMutation = useDeleteExpertMutation();
   const [showExpertModal, setShowExpertModal] = useState(false);
   const [newExpertName, setNewExpertName] = useState("");
   const [editingExpertId, setEditingExpertId] = useState<string | null>(null);
   const [expertError, setExpertError] = useState<string | null>(null);
 
-  const fetchExperts = useCallback(async () => {
-    try {
-      const data = await expertService.getExperts();
-      setExperts(data);
-      setError(null);
-    } catch (err) {
-      const errorMsg =
-        err instanceof Error
-          ? err.message
-          : "Ошибка загрузки экспертов";
-      setError(errorMsg);
-      console.error("Error fetching experts:", err);
-    }
-  }, [setExperts, setError]);
-
-  useEffect(() => {
-    if (experts.length === 0) {
-      void fetchExperts();
-    }
-  }, [experts.length, fetchExperts]);
+  const experts = expertsQuery.data ?? [];
+  const queryError =
+    expertsQuery.error instanceof Error ? expertsQuery.error.message : null;
 
   const openExpertModal = () => {
     setShowExpertModal(true);
@@ -55,14 +45,13 @@ export function useExperts({
   const handleAddExpert = async () => {
     const trimmedName = newExpertName.trim();
     if (!trimmedName) {
-      setExpertError("Введите имя эксперта");
+      setExpertError("Р’РІРµРґРёС‚Рµ РёРјСЏ СЌРєСЃРїРµСЂС‚Р°");
       return;
     }
 
     setExpertError(null);
     try {
-      const expert = await expertService.createExpert(trimmedName);
-      setExperts([...experts, expert]);
+      const expert = await createExpertMutation.mutateAsync(trimmedName);
       onSelectExpert(expert.id);
       setShowExpertModal(false);
       setNewExpertName("");
@@ -70,7 +59,7 @@ export function useExperts({
       setExpertError(
         err instanceof Error
           ? err.message
-          : "Ошибка создания эксперта",
+          : "РћС€РёР±РєР° СЃРѕР·РґР°РЅРёСЏ СЌРєСЃРїРµСЂС‚Р°",
       );
     }
   };
@@ -78,37 +67,38 @@ export function useExperts({
   const handleUpdateExpert = async () => {
     const trimmedName = newExpertName.trim();
     if (!editingExpertId || !trimmedName) {
-      setExpertError("Введите имя эксперта");
+      setExpertError("Р’РІРµРґРёС‚Рµ РёРјСЏ СЌРєСЃРїРµСЂС‚Р°");
       return;
     }
 
     setExpertError(null);
     try {
-      const expert = await expertService.updateExpert(editingExpertId, trimmedName);
-      setExperts(experts.map((item) => (item.id === editingExpertId ? expert : item)));
+      await updateExpertMutation.mutateAsync({
+        id: editingExpertId,
+        fullName: trimmedName,
+      });
       setEditingExpertId(null);
       setNewExpertName("");
     } catch (err) {
       setExpertError(
         err instanceof Error
           ? err.message
-          : "Ошибка обновления эксперта",
+          : "РћС€РёР±РєР° РѕР±РЅРѕРІР»РµРЅРёСЏ СЌРєСЃРїРµСЂС‚Р°",
       );
     }
   };
 
   const handleDeleteExpert = async (id: string) => {
-    if (!confirm("Удалить этого эксперта?")) return;
+    if (!confirm("РЈРґР°Р»РёС‚СЊ СЌС‚РѕРіРѕ СЌРєСЃРїРµСЂС‚Р°?")) return;
 
     try {
-      await expertService.deleteExpert(id);
-      setExperts(experts.filter((expert) => expert.id !== id));
+      await deleteExpertMutation.mutateAsync(id);
       if (selectedExpertId === id) onSelectExpert("");
     } catch (err) {
       setExpertError(
         err instanceof Error
           ? err.message
-          : "Ошибка удаления эксперта",
+          : "РћС€РёР±РєР° СѓРґР°Р»РµРЅРёСЏ СЌРєСЃРїРµСЂС‚Р°",
       );
     }
   };
@@ -121,9 +111,11 @@ export function useExperts({
 
   return {
     experts,
-    isLoading,
-    error,
-    setError,
+    isLoading: expertsQuery.isLoading,
+    error: queryError,
+    setError: (message: string | null) => {
+      void message;
+    },
     showExpertModal,
     newExpertName,
     setNewExpertName,

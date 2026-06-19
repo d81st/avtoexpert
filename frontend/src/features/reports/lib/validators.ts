@@ -1,5 +1,5 @@
 import { DEPRECIATION_OPTIONS } from '@/constants/reference';
-import type { Step1Data, Step2Data, Step3Data, Step4Data, Step5Data } from '@/features/reports/types';
+import type { Step1Data, Step2Data, Step3Data, Step4Data, Step5Data } from '../types';
 
 export const validateStep1 = (data: Step1Data | null | undefined): boolean => {
   if (!data) return false;

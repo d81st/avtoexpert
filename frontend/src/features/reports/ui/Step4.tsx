@@ -3,7 +3,7 @@ import {
   PART_TYPES,
   REPAIR_PART_NAMES,
 } from '@/constants/reference';
-import { useStep4Logic } from '@/features/reports/hooks/useStep4Logic';
+import { useStep4Logic } from '../hooks/useStep4Logic';
 import FieldLabel from '@/shared/ui/FieldLabel';
 import Input from '@/shared/ui/Input';
 import Button from '@/shared/ui/Button';

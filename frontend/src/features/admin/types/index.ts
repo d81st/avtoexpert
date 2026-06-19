@@ -27,3 +27,10 @@ export interface AdminPagination {
   total: number;
   totalPages: number;
 }
+
+export interface AdminReportsQueryParams {
+  page?: number;
+  limit?: number;
+  search?: string;
+  status?: "draft" | "completed";
+}

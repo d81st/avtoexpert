@@ -1,4 +1,5 @@
 import apiClient from "@/shared/api/client";
+import type { PaginatedResponse } from "@/shared/api/types";
 import type {
   Report,
   Step1Data,
@@ -6,30 +7,20 @@ import type {
   Step3Data,
   Step4Data,
   Step5Data,
-} from "@/features/reports/types";
+} from "../types";
 import {
   normalizeReport,
   toApiAutosave,
   toApiStep2,
   toApiStep3,
   toApiStep4,
-} from "@/features/reports/lib/reportMapper";
+} from "../lib/reportMapper";
 
 export interface ReportsQueryParams {
   page?: number;
   limit?: number;
   search?: string;
   status?: "draft" | "completed";
-}
-
-export interface PaginatedResponse<T> {
-  data: T[];
-  pagination: {
-    page: number;
-    limit: number;
-    total: number;
-    totalPages: number;
-  };
 }
 
 export const reportService = {
@@ -83,7 +74,8 @@ export const reportService = {
     await apiClient.patch(`/reports/${id}/step-4`, toApiStep4(step4Data));
   },
 
-  async updateStep5(id: string, _step5Data: Step5Data): Promise<void> {
+  async updateStep5(id: string, step5Data: Step5Data): Promise<void> {
+    void step5Data;
     await apiClient.patch(`/reports/${id}/step-5`, { currentStep: 5 });
   },
 

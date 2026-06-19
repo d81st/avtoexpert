@@ -1,12 +1,10 @@
 import apiClient from "@/shared/api/client";
-import type {
-  PaginatedResponse,
-  ReportsQueryParams,
-} from "@/features/reports/api/reportApi";
+import type { PaginatedResponse } from "@/shared/api/types";
+import type { AdminReportsQueryParams } from "../types";
 
 export const adminService = {
   async getAllReports(
-    params?: ReportsQueryParams,
+    params?: AdminReportsQueryParams,
   ): Promise<PaginatedResponse<Record<string, unknown>>> {
     const searchParams = new URLSearchParams();
 

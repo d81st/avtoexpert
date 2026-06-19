@@ -1,4 +1,4 @@
-import type { Expert } from "@/features/reports/types";
+import type { Expert } from "../types";
 import Alert from "@/shared/ui/Alert";
 import Button from "@/shared/ui/Button";
 import Input from "@/shared/ui/Input";

@@ -1,8 +1,8 @@
-import { useCallback, useState } from "react";
-import { useFormStore } from "@/features/reports/model/useFormStore";
-import { useReportStore } from "@/features/reports/model/useReportStore";
-import { reportService } from "@/features/reports/api/reportApi";
-import { documentService } from "@/features/reports/api/documentApi";
+import { useState } from "react";
+import { useFormStore } from "../model/useFormStore";
+import { useReportStore } from "../model/useReportStore";
+import { reportService } from "../api/reportApi";
+import { documentService } from "../api/documentApi";
 
 interface UseReportFinalizeParams {
   reportId?: string;
@@ -15,7 +15,7 @@ export function useReportFinalize({ reportId }: UseReportFinalizeParams) {
   const [generateError, setGenerateError] = useState<string | null>(null);
   const [generateSuccess, setGenerateSuccess] = useState(false);
 
-  const handleFinalize = useCallback(async () => {
+  const handleFinalize = async () => {
     if (!reportId || isGenerating) return;
 
     setIsGenerating(true);
@@ -36,12 +36,12 @@ export function useReportFinalize({ reportId }: UseReportFinalizeParams) {
       setGenerateSuccess(true);
     } catch (err) {
       setGenerateError(
-        (err as Error).message || "Ошибка генерации документа",
+        (err as Error).message || "РћС€РёР±РєР° РіРµРЅРµСЂР°С†РёРё РґРѕРєСѓРјРµРЅС‚Р°",
       );
     } finally {
       setIsGenerating(false);
     }
-  }, [reportId, step5, isGenerating, currentReport?.report_number]);
+  };
 
   return {
     isGenerating,

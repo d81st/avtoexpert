@@ -1,13 +1,13 @@
 import { useEffect, useState } from 'react';
-import { useFormStore } from '@/features/reports/model/useFormStore';
-import type { Step3Data } from '@/features/reports/types';
+import { useFormStore } from '../model/useFormStore';
+import type { Step3Data } from '../types';
 import { DEPRECIATION_OPTIONS, PRODUCTION_STATUSES } from '@/constants/reference';
-import { validateStep3 } from '@/features/reports/lib/validators';
+import { validateStep3 } from '../lib/validators';
 import {
   calcAverageAnalogPrice,
   calcMarketPrice,
-  formatSum,
-} from '@/features/reports/lib/calculations';
+} from '../lib/calculations';
+import { formatSum } from '@/shared/lib/formatters';
 import FieldLabel from '@/shared/ui/FieldLabel';
 import Input from '@/shared/ui/Input';
 
@@ -26,10 +26,6 @@ const EMPTY_STEP3: Step3Data = {
 function Step3({ onValidationChange }: { onValidationChange: (isValid: boolean) => void }) {
   const { step3, setStep3 } = useFormStore();
   const [data, setData] = useState<Step3Data>(step3 || EMPTY_STEP3);
-
-  useEffect(() => {
-    if (step3) setData(step3);
-  }, [step3]);
 
   useEffect(() => {
     onValidationChange(validateStep3(data));

@@ -1,52 +1,39 @@
-import { useEffect, useState } from "react";
-import { adminService } from "@/features/admin/api/adminApi";
-import type { AdminCreator } from "@/features/admin/types";
+import { useAdminCreatorsQuery } from "../model/adminQueries";
 import { formatDate } from "@/shared/lib/formatters";
 import Loader from "@/shared/ui/Loader";
 import Alert from "@/shared/ui/Alert";
 
 export default function AdminCreatorsTab() {
-  const [creators, setCreators] = useState<AdminCreator[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  const fetchCreators = async () => {
-    setIsLoading(true);
-    setError(null);
-    try {
-      const data = await adminService.getAllCreators();
-      setCreators(data);
-    } catch (err) {
-      setError((err as Error).message || "Ошибка загрузки");
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchCreators();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  const creatorsQuery = useAdminCreatorsQuery();
+  const creators = creatorsQuery.data ?? [];
+  const error =
+    creatorsQuery.error instanceof Error ? creatorsQuery.error.message : null;
 
   return (
     <>
-      {error && <Alert type="error" message={error} onClose={() => setError(null)} />}
+      {error && (
+        <Alert
+          type="error"
+          message={error}
+          onClose={() => void creatorsQuery.refetch()}
+        />
+      )}
 
-      {isLoading ? (
-        <Loader message="Загрузка создателей..." />
+      {creatorsQuery.isLoading ? (
+        <Loader message="Р—Р°РіСЂСѓР·РєР° СЃРѕР·РґР°С‚РµР»РµР№..." />
       ) : (
         <div className="data-table-wrap">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  Имя
+                  Name
                 </th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  Роль
+                  Role
                 </th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  Дата регистрации
+                  Registered
                 </th>
               </tr>
             </thead>
@@ -64,7 +51,9 @@ export default function AdminCreatorsTab() {
                           : "bg-gray-100 text-gray-800"
                       }`}
                     >
-                      {creator.role === "admin" ? "Админ" : "Создатель"}
+                      {creator.role === "admin"
+                        ? "РђРґРјРёРЅ"
+                        : "РЎРѕР·РґР°С‚РµР»СЊ"}
                     </span>
                   </td>
                   <td className="px-4 py-3 text-sm text-gray-500">

@@ -1,95 +1,97 @@
-import { useState } from "react";
+import { useForm } from "react-hook-form";
 import { useNavigate } from "react-router-dom";
 import { useAuthStore } from "@/shared/auth/useAuthStore";
-import { authService } from "@/features/auth/api/authApi";
-import { AxiosError } from "axios";
+import { useLoginMutation, type LoginPayload } from "../model/authMutations";
 import Card from "@/shared/ui/Card";
 import Input from "@/shared/ui/Input";
 import Button from "@/shared/ui/Button";
 import Alert from "@/shared/ui/Alert";
 
 function Login() {
-  const [login, setLogin] = useState("");
-  const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
-
   const navigate = useNavigate();
   const setAuth = useAuthStore((state) => state.setAuth);
+  const loginMutation = useLoginMutation();
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<LoginPayload>({
+    defaultValues: {
+      login: "",
+      password: "",
+    },
+  });
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError("");
-    setIsLoading(true);
+  const onSubmit = handleSubmit(async (payload) => {
+    const response = await loginMutation.mutateAsync(payload);
+    setAuth(response.token, response.creator);
+    navigate("/");
+  });
 
-    try {
-      if (!login.trim() || !password.trim()) {
-        setError("Логин и пароль не могут быть пустыми");
-        return;
-      }
-
-      const response = await authService.login(login, password);
-      setAuth(response.token, response.creator);
-      navigate("/");
-    } catch (err) {
-      const axiosError = err as AxiosError;
-      const errorMessage =
-        (axiosError.response?.data as any)?.message ||
-        "Неверный логин или пароль";
-      setError(errorMessage);
-      console.error("Login error:", err);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  const errorMessage =
+    loginMutation.error instanceof Error
+      ? loginMutation.error.message
+      : "РќРµРІРµСЂРЅС‹Р№ Р»РѕРіРёРЅ РёР»Рё РїР°СЂРѕР»СЊ";
 
   return (
     <div className="app-shell flex min-h-screen items-center justify-center p-4">
       <Card className="w-full max-w-md rounded-3xl">
         <div className="mb-6 text-center">
           <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 text-2xl text-white shadow-md">
-            🚗
+            рџљ—
           </div>
           <h1 className="brand-title text-3xl font-bold text-slate-900">
             AvtoExpert Pro
           </h1>
           <p className="page-subtitle mt-1 text-sm">
-            Система экспертизы автомобилей
+            РЎРёСЃС‚РµРјР° СЌРєСЃРїРµСЂС‚РёР·С‹ Р°РІС‚РѕРјРѕР±РёР»РµР№
           </p>
         </div>
 
-        {error && (
-          <Alert type="error" message={error} onClose={() => setError("")} />
+        {loginMutation.isError && (
+          <Alert
+            type="error"
+            message={errorMessage}
+            onClose={() => loginMutation.reset()}
+          />
         )}
 
-        <form onSubmit={handleSubmit} className="mt-6 space-y-4">
+        <form onSubmit={onSubmit} className="mt-6 space-y-4">
           <Input
             type="text"
             id="login"
-            label="Логин"
-            value={login}
-            onChange={(e) => setLogin(e.target.value)}
-            required
-            disabled={isLoading}
+            label="Р›РѕРіРёРЅ"
+            error={errors.login?.message}
+            disabled={loginMutation.isPending}
+            {...register("login", {
+              required:
+                "Р›РѕРіРёРЅ Рё РїР°СЂРѕР»СЊ РЅРµ РјРѕРіСѓС‚ Р±С‹С‚СЊ РїСѓСЃС‚С‹РјРё",
+              setValueAs: (value) => value.trim(),
+            })}
           />
 
           <Input
             type="password"
             id="password"
-            label="Пароль"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-            disabled={isLoading}
+            label="РџР°СЂРѕР»СЊ"
+            error={errors.password?.message}
+            disabled={loginMutation.isPending}
+            {...register("password", {
+              required:
+                "Р›РѕРіРёРЅ Рё РїР°СЂРѕР»СЊ РЅРµ РјРѕРіСѓС‚ Р±С‹С‚СЊ РїСѓСЃС‚С‹РјРё",
+              setValueAs: (value) => value.trim(),
+            })}
           />
 
           <Button
             type="submit"
-            disabled={isLoading}
-            isLoading={isLoading}
+            disabled={loginMutation.isPending}
+            isLoading={loginMutation.isPending}
             fullWidth
           >
-            {isLoading ? "Вход в систему..." : "Войти"}
+            {loginMutation.isPending
+              ? "Р’С…РѕРґ РІ СЃРёСЃС‚РµРјСѓ..."
+              : "Р’РѕР№С‚Рё"}
           </Button>
         </form>
       </Card>

@@ -1,6 +1,6 @@
 import apiClient from "@/shared/api/client";
 import { downloadBlob } from "@/shared/lib/download";
-import type { FinalizeResponse } from "@/features/reports/types";
+import type { FinalizeResponse } from "../types";
 
 export const documentService = {
   async finalizeAndGenerate(id: string): Promise<FinalizeResponse> {

@@ -1,7 +1,7 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { useForm } from "react-hook-form";
 import { useNavigate } from "react-router-dom";
-import { adminService } from "@/features/admin/api/adminApi";
-import type { AdminReport, AdminPagination } from "@/features/admin/types";
+import { useAdminReportsQuery } from "../model/adminQueries";
 import { formatDate, formatProgress, formatSum } from "@/shared/lib/formatters";
 import StatusBadge from "@/shared/ui/StatusBadge";
 import Button from "@/shared/ui/Button";
@@ -9,81 +9,70 @@ import Loader from "@/shared/ui/Loader";
 import Alert from "@/shared/ui/Alert";
 import Card from "@/shared/ui/Card";
 
+interface SearchForm {
+  search: string;
+}
+
 export default function AdminReportsTab() {
   const navigate = useNavigate();
-  const [reports, setReports] = useState<AdminReport[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [searchQuery, setSearchQuery] = useState("");
-  const [pagination, setPagination] = useState<AdminPagination | null>(null);
+  const { register, handleSubmit, reset } = useForm<SearchForm>({
+    defaultValues: { search: "" },
+  });
+  const reportsQuery = useAdminReportsQuery({
+    page: currentPage,
+    search: searchQuery || undefined,
+    limit: 20,
+  });
+  const reports = reportsQuery.data?.data ?? [];
+  const pagination = reportsQuery.data?.pagination ?? null;
+  const error =
+    reportsQuery.error instanceof Error ? reportsQuery.error.message : null;
 
-  const fetchReports = async (search?: string, page = currentPage) => {
-    setIsLoading(true);
-    setError(null);
-    try {
-      const response = await adminService.getAllReports({
-        page,
-        search: search || searchQuery || undefined,
-        limit: 20,
-      });
-      setReports(response.data as unknown as AdminReport[]);
-      setPagination(response.pagination);
-    } catch (err) {
-      setError((err as Error).message || "Ошибка загрузки");
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchReports(undefined, currentPage);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentPage]);
-
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
+  const onSearch = handleSubmit(({ search }) => {
     setCurrentPage(1);
-    fetchReports(searchQuery, 1);
-  };
+    setSearchQuery(search.trim());
+  });
 
   const handleClearSearch = () => {
-    setSearchQuery("");
+    reset({ search: "" });
     setCurrentPage(1);
-    fetchReports("", 1);
-  };
-
-  const handleViewReport = (reportId: string) => {
-    navigate(`/report/${reportId}`);
+    setSearchQuery("");
   };
 
   return (
     <>
-      <form onSubmit={handleSearch} className="mb-6 flex flex-col gap-2 sm:flex-row">
+      <form onSubmit={onSearch} className="mb-6 flex flex-col gap-2 sm:flex-row">
         <input
           type="text"
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          placeholder="Поиск по номеру, госномеру, владельцу..."
+          placeholder="РџРѕРёСЃРє РїРѕ РЅРѕРјРµСЂСѓ, РіРѕСЃРЅРѕРјРµСЂСѓ, РІР»Р°РґРµР»СЊС†Сѓ..."
           className="form-control flex-1 px-4 py-3"
+          {...register("search")}
         />
-        <Button type="submit" variant="secondary">
-          Найти
+        <Button type="submit" variant="secondary" isLoading={reportsQuery.isFetching}>
+          РќР°Р№С‚Рё
         </Button>
         {searchQuery && (
           <Button type="button" variant="secondary" onClick={handleClearSearch}>
-            Сбросить
+            РЎР±СЂРѕСЃРёС‚СЊ
           </Button>
         )}
       </form>
 
-      {error && <Alert type="error" message={error} onClose={() => setError(null)} />}
+      {error && (
+        <Alert
+          type="error"
+          message={error}
+          onClose={() => void reportsQuery.refetch()}
+        />
+      )}
 
-      {isLoading ? (
-        <Loader message="Загрузка заключений..." />
+      {reportsQuery.isLoading ? (
+        <Loader message="Р—Р°РіСЂСѓР·РєР° Р·Р°РєР»СЋС‡РµРЅРёР№..." />
       ) : reports.length === 0 ? (
         <Card className="text-center">
-          <p className="text-gray-500">Заключения не найдены</p>
+          <p className="text-gray-500">Р—Р°РєР»СЋС‡РµРЅРёСЏ РЅРµ РЅР°Р№РґРµРЅС‹</p>
         </Card>
       ) : (
         <>
@@ -91,14 +80,14 @@ export default function AdminReportsTab() {
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">№</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Дата</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Статус</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Прогресс</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Госномер</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Владелец</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Сумма</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Действия</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">в„–</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Р”Р°С‚Р°</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">РЎС‚Р°С‚СѓСЃ</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">РџСЂРѕРіСЂРµСЃСЃ</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Р“РѕСЃРЅРѕРјРµСЂ</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Р’Р»Р°РґРµР»РµС†</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">РЎСѓРјРјР°</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Р”РµР№СЃС‚РІРёСЏ</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
@@ -127,10 +116,10 @@ export default function AdminReportsTab() {
                     </td>
                     <td className="px-4 py-3">
                       <button
-                        onClick={() => handleViewReport(report.id)}
+                        onClick={() => navigate(`/report/${report.id}`)}
                         className="text-blue-600 hover:text-blue-900 text-sm"
                       >
-                        Открыть
+                        РћС‚РєСЂС‹С‚СЊ
                       </button>
                     </td>
                   </tr>
@@ -145,20 +134,20 @@ export default function AdminReportsTab() {
                 variant="secondary"
                 size="sm"
                 disabled={currentPage <= 1}
-                onClick={() => setCurrentPage((p) => p - 1)}
+                onClick={() => setCurrentPage((page) => page - 1)}
               >
-                ←
+                в†ђ
               </Button>
               <span className="px-4 py-2 text-sm text-gray-600">
-                {currentPage} из {pagination.totalPages}
+                {currentPage} РёР· {pagination.totalPages}
               </span>
               <Button
                 variant="secondary"
                 size="sm"
                 disabled={currentPage >= pagination.totalPages}
-                onClick={() => setCurrentPage((p) => p + 1)}
+                onClick={() => setCurrentPage((page) => page + 1)}
               >
-                →
+                в†’
               </Button>
             </div>
           )}

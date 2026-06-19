@@ -1,5 +1,4 @@
-import type { RepairWork, SparePart, Material, PaintWork } from '@/features/reports/types';
-export { formatSum } from '@/shared/lib/formatters';
+import type { RepairWork, SparePart, Material, PaintWork } from "../types";
 
 export const BT_COEFFICIENTS: Record<string, number> = {
   'BT-1': 1.0,

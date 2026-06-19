@@ -6,10 +6,13 @@
     "module": "esnext",
     "types": ["vite/client"],
     "skipLibCheck": true,
-    "ignoreDeprecations": "6.0",
+    // This line suppresses deprecation warnings specific to TypeScript version 6.0.
+    // It's typically used to temporarily avoid noise from deprecated API warnings
+    // that you can't address immediately while upgrading TypeScript versions.
+    // "ignoreDeprecations": "6.0",
 
     /* Path aliases */
-    "baseUrl": ".",
+    // "baseUrl": ".",
     "paths": {
       "@/*": ["./src/*"]
     },
