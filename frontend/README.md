@@ -76,6 +76,7 @@ npm run preview
 Backend должен быть уже запущен на `http://localhost:3000`.
 
 Инструкции по запуску backend:
+
 - [Docker Desktop (Windows)](../README.md#вариант-a-docker-desktop-на-windows)
 - [Docker в WSL](../README.md#вариант-b-docker-установлен-внутри-wsl)
 
