@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useFormStore } from '@/store/useFormStore';
 import type { Step2Data } from '@/types';
+import { validateStep2 } from '@/utils/validators';
 import {
   BODY_TYPES,
   CAR_MODELS,
@@ -41,21 +42,7 @@ function Step2({ onValidationChange }: { onValidationChange: (isValid: boolean) 
   }, [step2]);
 
   useEffect(() => {
-    const isValid =
-      !!data.car_model &&
-      !!data.car_year &&
-      !!data.car_color &&
-      !!data.body_type &&
-      !!data.license_plate &&
-      !!data.owner_name &&
-      !!data.tech_passport &&
-      data.mileage > 0 &&
-      !!data.vin_code &&
-      data.vin_code.length === 17 &&
-      !!data.odometer_status &&
-      !!data.transmission_type;
-
-    onValidationChange(isValid);
+    onValidationChange(validateStep2(data));
   }, [data, onValidationChange]);
 
   const update = (patch: Partial<Step2Data>) => {

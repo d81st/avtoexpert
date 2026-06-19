@@ -1,160 +1,35 @@
-import { useEffect, useState } from 'react';
-import { useFormStore } from '@/store/useFormStore';
-import type { RepairWork, PaintWork, SparePart, Material } from '@/types';
 import {
   COMPLEXITY_OPTIONS,
   PART_TYPES,
   REPAIR_PART_NAMES,
 } from '@/constants/reference';
-import { calcRepairWorkPrice } from '@/utils/calculations';
+import { useStep4Logic } from '@/hooks/useStep4Logic';
 import FieldLabel from '@/components/FieldLabel';
 import Input from '@/components/Input';
 import Button from '@/components/Button';
 
 function Step4({ onValidationChange }: { onValidationChange: (isValid: boolean) => void }) {
-  const { step4, setStep4 } = useFormStore();
-
-  const [hourlyRate, setHourlyRate] = useState(50000);
-  const [repairWorks, setRepairWorks] = useState<RepairWork[]>([]);
-  const [paintWorks, setPaintWorks] = useState<PaintWork[]>([]);
-  const [spareParts, setSpareParts] = useState<SparePart[]>([]);
-  const [materials, setMaterials] = useState<Material[]>([]);
-
-  useEffect(() => {
-    if (step4) {
-      setHourlyRate(step4.hourly_rate);
-      setRepairWorks(step4.repair_works || []);
-      setPaintWorks(step4.paint_works || []);
-      setSpareParts(step4.spare_parts || []);
-      setMaterials(step4.materials || []);
-    }
-  }, [step4]);
-
-  const save = (
-    patch: Partial<{
-      hourly_rate: number;
-      repair_works: RepairWork[];
-      paint_works: PaintWork[];
-      spare_parts: SparePart[];
-      materials: Material[];
-    }> = {}
-  ) => {
-    setStep4({
-      hourly_rate: patch.hourly_rate ?? hourlyRate,
-      repair_works: patch.repair_works ?? repairWorks,
-      paint_works: patch.paint_works ?? paintWorks,
-      spare_parts: patch.spare_parts ?? spareParts,
-      materials: patch.materials ?? materials,
-    });
-  };
-
-  useEffect(() => {
-    const hasValidWork = repairWorks.some((w) => w.part_name.trim().length > 0);
-    onValidationChange(hourlyRate > 0 && hasValidWork);
-  }, [hourlyRate, repairWorks, onValidationChange]);
-
-  const recalcRepairPrices = (rate: number, works: RepairWork[]): RepairWork[] =>
-    works.map((work) => ({
-      ...work,
-      price: calcRepairWorkPrice(rate, work.complexity),
-    }));
-
-  const handleHourlyRateChange = (value: number) => {
-    const updatedWorks = recalcRepairPrices(value, repairWorks);
-    setHourlyRate(value);
-    setRepairWorks(updatedWorks);
-    save({ hourly_rate: value, repair_works: updatedWorks });
-  };
-
-  const addRepairWork = () => {
-    const newWork: RepairWork = {
-      part_name: '',
-      type: "Bo'luvchi",
-      complexity: 'BT-1',
-      price: calcRepairWorkPrice(hourlyRate, 'BT-1'),
-    };
-    const updated = [...repairWorks, newWork];
-    setRepairWorks(updated);
-    save({ repair_works: updated });
-  };
-
-  const updateRepairWork = (index: number, field: keyof RepairWork, value: string | number) => {
-    const updated = [...repairWorks];
-    updated[index] = { ...updated[index], [field]: value };
-    if (field === 'complexity') {
-      updated[index].price = calcRepairWorkPrice(hourlyRate, value as string);
-    }
-    setRepairWorks(updated);
-    save({ repair_works: updated });
-  };
-
-  const removeRepairWork = (index: number) => {
-    const updated = repairWorks.filter((_, i) => i !== index);
-    setRepairWorks(updated);
-    save({ repair_works: updated });
-  };
-
-  const addPaintWork = () => {
-    const updated = [...paintWorks, { part_name: '', paint_price: 0, polish_price: 0 }];
-    setPaintWorks(updated);
-    save({ paint_works: updated });
-  };
-
-  const updatePaintWork = (index: number, field: keyof PaintWork, value: string | number) => {
-    const updated = [...paintWorks];
-    updated[index] = { ...updated[index], [field]: value };
-    setPaintWorks(updated);
-    save({ paint_works: updated });
-  };
-
-  const removePaintWork = (index: number) => {
-    const updated = paintWorks.filter((_, i) => i !== index);
-    setPaintWorks(updated);
-    save({ paint_works: updated });
-  };
-
-  const addSparePart = () => {
-    const updated = [...spareParts, { name: '', qty: 1, price: 0 }];
-    setSpareParts(updated);
-    save({ spare_parts: updated });
-  };
-
-  const updateSparePart = (index: number, field: keyof SparePart, value: string | number) => {
-    const updated = [...spareParts];
-    updated[index] = { ...updated[index], [field]: value };
-    setSpareParts(updated);
-    save({ spare_parts: updated });
-  };
-
-  const removeSparePart = (index: number) => {
-    const updated = spareParts.filter((_, i) => i !== index);
-    setSpareParts(updated);
-    save({ spare_parts: updated });
-  };
-
-  const addMaterial = () => {
-    const updated = [...materials, { name: '', qty: 1, price: 0 }];
-    setMaterials(updated);
-    save({ materials: updated });
-  };
-
-  const updateMaterial = (index: number, field: keyof Material, value: string | number) => {
-    const updated = [...materials];
-    updated[index] = { ...updated[index], [field]: value };
-    setMaterials(updated);
-    save({ materials: updated });
-  };
-
-  const removeMaterial = (index: number) => {
-    const updated = materials.filter((_, i) => i !== index);
-    setMaterials(updated);
-    save({ materials: updated });
-  };
-
-  const totalRepair = repairWorks.reduce((s, w) => s + w.price, 0);
-  const totalPaint = paintWorks.reduce((s, w) => s + w.paint_price + w.polish_price, 0);
-  const totalSpare = spareParts.reduce((s, p) => s + p.qty * p.price, 0);
-  const totalMat = materials.reduce((s, m) => s + m.qty * m.price, 0);
+  const {
+    hourlyRate,
+    repairWorks,
+    paintWorks,
+    spareParts,
+    materials,
+    totals,
+    handleHourlyRateChange,
+    addRepairWork,
+    updateRepairWork,
+    removeRepairWork,
+    addPaintWork,
+    updatePaintWork,
+    removePaintWork,
+    addSparePart,
+    updateSparePart,
+    removeSparePart,
+    addMaterial,
+    updateMaterial,
+    removeMaterial,
+  } = useStep4Logic({ onValidationChange });
 
   return (
     <div className="space-y-8">
@@ -294,10 +169,10 @@ function Step4({ onValidationChange }: { onValidationChange: (isValid: boolean) 
 
       {(repairWorks.length > 0 || paintWorks.length > 0 || spareParts.length > 0 || materials.length > 0) && (
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-          <div><span className="text-gray-600">{'\u0420\u0435\u043c\u043e\u043d\u0442:'}</span> <strong>{totalRepair.toLocaleString('ru-RU')}</strong></div>
-          <div><span className="text-gray-600">{'\u041f\u043e\u043a\u0440\u0430\u0441\u043a\u0430:'}</span> <strong>{totalPaint.toLocaleString('ru-RU')}</strong></div>
-          <div><span className="text-gray-600">{'\u0417\u0430\u043f\u0447\u0430\u0441\u0442\u0438:'}</span> <strong>{totalSpare.toLocaleString('ru-RU')}</strong></div>
-          <div><span className="text-gray-600">{'\u041c\u0430\u0442\u0435\u0440\u0438\u0430\u043b\u044b:'}</span> <strong>{totalMat.toLocaleString('ru-RU')}</strong></div>
+          <div><span className="text-gray-600">{'\u0420\u0435\u043c\u043e\u043d\u0442:'}</span> <strong>{totals.totalRepair.toLocaleString('ru-RU')}</strong></div>
+          <div><span className="text-gray-600">{'\u041f\u043e\u043a\u0440\u0430\u0441\u043a\u0430:'}</span> <strong>{totals.totalPaint.toLocaleString('ru-RU')}</strong></div>
+          <div><span className="text-gray-600">{'\u0417\u0430\u043f\u0447\u0430\u0441\u0442\u0438:'}</span> <strong>{totals.totalSpare.toLocaleString('ru-RU')}</strong></div>
+          <div><span className="text-gray-600">{'\u041c\u0430\u0442\u0435\u0440\u0438\u0430\u043b\u044b:'}</span> <strong>{totals.totalMat.toLocaleString('ru-RU')}</strong></div>
         </div>
       )}
     </div>

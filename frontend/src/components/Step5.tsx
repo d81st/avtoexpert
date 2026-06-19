@@ -1,12 +1,11 @@
-import { useCallback, useEffect, useState } from 'react';
-import { useFormStore } from '@/store/useFormStore';
-import { useReportStore } from '@/store/useReportStore';
-import { photoService } from '@/services/photoService';
-import type { ReportPhoto } from '@/types';
-import { ACCEPTED_PHOTO_TYPES, MAX_PHOTOS } from '@/constants/reference';
-import { calcGrandTotal, formatSum } from '@/utils/calculations';
-import Alert from '@/components/Alert';
-import Button from '@/components/Button';
+import { useEffect } from "react";
+import { MAX_PHOTOS } from "@/constants/reference";
+import { usePhotoUpload } from "@/hooks/usePhotoUpload";
+import { useFormStore } from "@/store/useFormStore";
+import { calcGrandTotal, formatSum } from "@/utils/calculations";
+import { validateStep5 } from "@/utils/validators";
+import Alert from "@/components/Alert";
+import Button from "@/components/Button";
 
 interface Step5Props {
   onValidationChange: (isValid: boolean) => void;
@@ -23,34 +22,25 @@ function Step5({
   generateError,
   generateSuccess,
 }: Step5Props) {
-  const { step3, step4, step5, setStep5 } = useFormStore();
-  const { currentReport } = useReportStore();
-  const [photos, setPhotos] = useState<ReportPhoto[]>(step5?.photos || []);
-  const [uploading, setUploading] = useState(false);
-  const [uploadError, setUploadError] = useState<string | null>(null);
-  const [isDragging, setIsDragging] = useState(false);
-
-  const loadPhotos = useCallback(async () => {
-    if (!currentReport?.id) return;
-    try {
-      const loaded = await photoService.getPhotos(currentReport.id);
-      setPhotos(loaded);
-      setStep5({ photos: loaded });
-    } catch {
-      // Черновик без фото — нормальная ситуация
-    }
-  }, [currentReport?.id, setStep5]);
+  const { step3, step4 } = useFormStore();
+  const {
+    photos,
+    uploading,
+    uploadError,
+    setUploadError,
+    isDragging,
+    handleFileInput,
+    handleDragOver,
+    handleDragLeave,
+    handleDrop,
+    removePhoto,
+  } = usePhotoUpload();
 
   useEffect(() => {
-    loadPhotos();
-  }, [loadPhotos]);
-
-  useEffect(() => {
-    onValidationChange(true);
-  }, [onValidationChange]);
+    onValidationChange(validateStep5({ photos }));
+  }, [photos, onValidationChange]);
 
   const depreciationPct = step3?.depreciation_pct ?? 90;
-
   const totals = step4
     ? calcGrandTotal({
         repairWorks: step4.repair_works,
@@ -61,86 +51,26 @@ function Step5({
       })
     : null;
 
-  const uploadFiles = async (files: FileList | File[]) => {
-    if (!currentReport?.id) {
-      setUploadError('Сначала сохраните шаг 1, чтобы загрузить фото');
-      return;
-    }
-
-    const fileArray = Array.from(files);
-    const remaining = MAX_PHOTOS - photos.length;
-
-    if (fileArray.length > remaining) {
-      setUploadError(`Можно загрузить ещё ${remaining} фото (максимум ${MAX_PHOTOS})`);
-      return;
-    }
-
-    const invalid = fileArray.filter((f) => !ACCEPTED_PHOTO_TYPES.includes(f.type) && !f.name.match(/\.(jpe?g|png|heic|heif)$/i));
-    if (invalid.length > 0) {
-      setUploadError('Допустимые форматы: JPG, PNG, HEIC');
-      return;
-    }
-
-    setUploading(true);
-    setUploadError(null);
-
-    try {
-      const uploaded = await photoService.uploadPhotos(currentReport.id, fileArray);
-      const next = [...photos, ...uploaded];
-      setPhotos(next);
-      setStep5({ photos: next });
-    } catch (err) {
-      setUploadError((err as Error).message || 'Ошибка загрузки фото');
-    } finally {
-      setUploading(false);
-    }
-  };
-
-  const handleFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files) {
-      uploadFiles(e.target.files);
-      e.target.value = '';
-    }
-  };
-
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragging(false);
-    if (e.dataTransfer.files.length > 0) {
-      uploadFiles(e.dataTransfer.files);
-    }
-  };
-
-  const removePhoto = async (photo: ReportPhoto) => {
-    if (!currentReport?.id) return;
-
-    try {
-      await photoService.deletePhoto(currentReport.id, photo.id);
-      const next = photos.filter((p) => p.id !== photo.id);
-      setPhotos(next);
-      setStep5({ photos: next });
-    } catch (err) {
-      setUploadError((err as Error).message || 'Ошибка удаления фото');
-    }
-  };
-
   return (
     <div className="space-y-8">
       <div>
         <h2 className="text-2xl font-bold text-gray-800">Шаг 5: Yakunlash</h2>
-        <p className="text-sm text-gray-600 mt-2">Фотографии повреждений и итоговые суммы</p>
+        <p className="text-sm text-gray-600 mt-2">
+          Фотографии повреждений и итоговые суммы
+        </p>
       </div>
 
-      {/* 5.1 — Фото */}
       <section>
-        <h3 className="text-lg font-semibold text-gray-800 mb-4">5.1 — Фотографии / Rasmlar</h3>
+        <h3 className="text-lg font-semibold text-gray-800 mb-4">
+          5.1 - Фотографии / Rasmlar
+        </h3>
 
         <div
-          onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
-          onDragLeave={() => setIsDragging(false)}
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
           onDrop={handleDrop}
           className={`border-2 border-dashed rounded-lg p-8 text-center transition-all ${
-            isDragging ? 'border-blue-500 bg-blue-50' : 'border-gray-300 hover:border-blue-400 hover:bg-gray-50'
+            isDragging ? "border-blue-500 bg-blue-50" : "border-gray-300 hover:border-blue-400 hover:bg-gray-50"
           }`}
         >
           <input
@@ -154,13 +84,17 @@ function Step5({
           />
           <label
             htmlFor="photo-upload"
-            className={`cursor-pointer block ${uploading || photos.length >= MAX_PHOTOS ? 'opacity-50 cursor-not-allowed' : ''}`}
+            className={`cursor-pointer block ${uploading || photos.length >= MAX_PHOTOS ? "opacity-50 cursor-not-allowed" : ""}`}
           >
-            <div className="text-4xl mb-3">📸</div>
+            <div className="text-4xl mb-3">Фото</div>
             <p className="text-gray-700 font-medium">
-              {uploading ? 'Загрузка...' : 'Перетащите файлы или нажмите для выбора'}
+              {uploading
+                ? "Загрузка..."
+                : "Перетащите файлы или нажмите для выбора"}
             </p>
-            <p className="text-xs text-gray-500 mt-2">JPG, PNG, HEIC — до {MAX_PHOTOS} фото</p>
+            <p className="text-xs text-gray-500 mt-2">
+              JPG, PNG, HEIC - до {MAX_PHOTOS} фото
+            </p>
             <p className="text-sm font-medium text-blue-600 mt-3">
               Загружено: {photos.length} из {MAX_PHOTOS}
             </p>
@@ -180,10 +114,12 @@ function Step5({
                 />
                 <button
                   type="button"
-                  onClick={() => removePhoto(photo)}
+                  onClick={() => {
+                    void removePhoto(photo);
+                  }}
                   className="absolute top-2 right-2 bg-red-600 text-white rounded-full w-7 h-7 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
                 >
-                  ✕
+                  x
                 </button>
                 <span className="absolute bottom-1 left-1 bg-black/60 text-white text-xs px-2 py-0.5 rounded">
                   {index + 1}
@@ -194,9 +130,10 @@ function Step5({
         )}
       </section>
 
-      {/* 5.2 — Итоги */}
       <section>
-        <h3 className="text-lg font-semibold text-gray-800 mb-4">5.2 — Итоговые суммы / Yakuniy summalar</h3>
+        <h3 className="text-lg font-semibold text-gray-800 mb-4">
+          5.2 - Итоговые суммы / Yakuniy summalar
+        </h3>
 
         {!step4 ? (
           <Alert type="info" message="Заполните шаг 4 для просмотра итогов" />
@@ -211,7 +148,9 @@ function Step5({
               <strong>{formatSum(totals?.totalSparePartsFull)}</strong>
             </div>
             <div className="flex justify-between p-3 bg-green-50 rounded">
-              <span>Итого запчасти с износом ({depreciationPct}%) / Eskirish bilan</span>
+              <span>
+                Итого запчасти с износом ({depreciationPct}%) / Eskirish bilan
+              </span>
               <strong className="text-green-700">{formatSum(totals?.totalSparePartsWithWear)}</strong>
             </div>
             <div className="flex justify-between p-3 bg-gray-50 rounded">
@@ -226,9 +165,10 @@ function Step5({
         )}
       </section>
 
-      {/* 5.3 — Генерация */}
       <section>
-        <h3 className="text-lg font-semibold text-gray-800 mb-4">5.3 — Генерация документа</h3>
+        <h3 className="text-lg font-semibold text-gray-800 mb-4">
+          5.3 - Генерация документа
+        </h3>
 
         {generateError && <Alert type="error" message={generateError} />}
 
@@ -243,7 +183,11 @@ function Step5({
           size="lg"
           fullWidth
         >
-          {isGenerating ? '⟳ Генерация...' : generateSuccess ? '✓ Готово!' : 'Скачать заключение .docx'}
+          {isGenerating
+            ? "Генерация..."
+            : generateSuccess
+              ? "Готово!"
+              : "Скачать заключение .docx"}
         </Button>
       </section>
     </div>

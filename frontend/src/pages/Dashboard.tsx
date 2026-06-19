@@ -5,7 +5,9 @@ import { useReportStore } from "@/store/useReportStore";
 import {
   reportService,
   type ReportsQueryParams,
-} from "@/services/reportService";
+} from "@/features/reports/api/reportApi";
+import { formatDate, formatProgress } from "@/shared/lib/formatters";
+import StatusBadge from "@/shared/ui/StatusBadge";
 import Loader from "@/components/Loader";
 import Button from "@/components/Button";
 import Alert from "@/components/Alert";
@@ -55,7 +57,6 @@ function Dashboard() {
 
   const handleLogout = () => {
     logout();
-    localStorage.removeItem("token");
     navigate("/login");
   };
 
@@ -194,24 +195,10 @@ function Dashboard() {
                         {report.report_number}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {report.report_date
-                          ? new Date(report.report_date).toLocaleDateString(
-                              "ru-RU",
-                            )
-                          : "-"}
+                      {formatDate(report.report_date)}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm">
-                        <span
-                          className={`px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                            report.status === "completed"
-                              ? "bg-green-100 text-green-800"
-                              : "bg-yellow-100 text-yellow-800"
-                          }`}
-                        >
-                          {report.status === "completed"
-                            ? "✓ Завершено"
-                            : "◯ Черновик"}
-                        </span>
+                      <StatusBadge status={report.status} />
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                         <div className="flex items-center gap-2">
@@ -224,7 +211,7 @@ function Dashboard() {
                             />
                           </div>
                           <span className="text-xs font-medium">
-                            {report.current_step}/5
+                            {formatProgress(report.current_step)}
                           </span>
                         </div>
                       </td>

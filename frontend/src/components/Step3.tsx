@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useFormStore } from '@/store/useFormStore';
 import type { Step3Data } from '@/types';
 import { DEPRECIATION_OPTIONS, PRODUCTION_STATUSES } from '@/constants/reference';
+import { validateStep3 } from '@/utils/validators';
 import {
   calcAverageAnalogPrice,
   calcMarketPrice,
@@ -31,17 +32,7 @@ function Step3({ onValidationChange }: { onValidationChange: (isValid: boolean) 
   }, [step3]);
 
   useEffect(() => {
-    const isValid =
-      !!data.production_status &&
-      data.analog1_mileage > 0 &&
-      data.analog1_price > 0 &&
-      data.analog2_mileage > 0 &&
-      data.analog2_price > 0 &&
-      data.analog3_mileage > 0 &&
-      data.analog3_price > 0 &&
-      DEPRECIATION_OPTIONS.includes(data.depreciation_pct as typeof DEPRECIATION_OPTIONS[number]);
-
-    onValidationChange(isValid);
+    onValidationChange(validateStep3(data));
   }, [data, onValidationChange]);
 
   const update = (patch: Partial<Step3Data>) => {

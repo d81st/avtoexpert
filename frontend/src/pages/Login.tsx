@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuthStore } from "@/store/useAuthStore";
-import { authService } from "@/services/authService";
+import { authService } from "@/features/auth/api/authApi";
 import { AxiosError } from "axios";
 import Card from "@/components/Card";
 import Input from "@/components/Input";
@@ -29,14 +29,7 @@ function Login() {
       }
 
       const response = await authService.login(login, password);
-
-      // Save token to localStorage
-      localStorage.setItem("token", response.token);
-
-      // Update auth store
       setAuth(response.token, response.creator);
-
-      // Redirect to dashboard
       navigate("/");
     } catch (err) {
       const axiosError = err as AxiosError;

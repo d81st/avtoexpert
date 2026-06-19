@@ -1,11 +1,9 @@
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { useFormStore } from "@/store/useFormStore";
+import { useReportWizard } from "@/hooks/useReportWizard";
+import { useReportAutosave } from "@/hooks/useReportAutosave";
+import { useReportFinalize } from "@/hooks/useReportFinalize";
 import { useReportStore } from "@/store/useReportStore";
-import { reportService } from "@/services/reportService";
-import { documentService } from "@/services/documentService";
-import { debounce } from "@/utils/debounce";
-import { normalizeReport } from "@/utils/reportMapper";
 import Wizard from "@/components/Wizard";
 import WizardNavigation from "@/components/WizardNavigation";
 import Loader from "@/components/Loader";
@@ -21,174 +19,31 @@ const TOTAL_STEPS = 5;
 function ReportPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-
-  const {
-    currentStep,
-    setCurrentStep,
-    step1,
-    step2,
-    step3,
-    step4,
-    step5,
-    resetForm,
-    hydrateFromReport,
-  } = useFormStore();
-
-  const {
-    currentReport,
-    setCurrentReport,
-    isLoading,
-    setLoading,
-    setError,
-    error,
-  } = useReportStore();
-
-  // флаг: отчёт только что создан через createReport — не перезагружать из API
-  const justCreatedRef = useRef(false);
-
+  const { isLoading, error, setError } = useReportStore();
   const [isValid, setIsValid] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [generateError, setGenerateError] = useState<string | null>(null);
-  const [generateSuccess, setGenerateSuccess] = useState(false);
-  const [saveError, setSaveError] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (id) {
-      if (justCreatedRef.current) {
-        // отчёт только что создан: данные уже есть в store, fetchReport не нужен
-        justCreatedRef.current = false;
-        return;
-      }
-      fetchReport(id);
-    } else {
-      resetForm();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id]);
-
-  const autosaveReport = useCallback(
-    debounce(async (reportId: string) => {
-      if (!reportId || currentStep === 1) return;
-
-      setIsSaving(true);
-      try {
-        await reportService.autosave(reportId, { step2, step3, step4 });
-      } catch (err) {
-        console.error("Autosave error:", err);
-      } finally {
-        setIsSaving(false);
-      }
-    }, 30000),
-    [currentStep, step2, step3, step4],
-  );
-
-  useEffect(() => {
-    if (currentReport?.id && currentStep > 1) {
-      autosaveReport(currentReport.id);
-    }
-  }, [
-    step2,
-    step3,
-    step4,
-    step5,
-    currentReport?.id,
+  const {
     currentStep,
-    autosaveReport,
-  ]);
+    currentReport,
+    handleNext,
+    handlePrevious,
+    saveError,
+    setSaveError,
+  } = useReportWizard({ id });
 
-  const fetchReport = async (reportId: string) => {
-    setLoading(true);
-    try {
-      const raw = await reportService.getReport(reportId);
-      const report = normalizeReport(raw);
-      setCurrentReport(report);
-      hydrateFromReport(raw);
-      setCurrentStep(Math.max(report.current_step, 1));
-    } catch {
-      setError("Ошибка загрузки заключения");
-      navigate("/");
-    } finally {
-      setLoading(false);
-    }
-  };
+  const { isSaving } = useReportAutosave({
+    reportId: currentReport?.id,
+    currentStep,
+  });
 
-  const handleNext = async () => {
-    if (!isValid) return;
-    setSaveError(null);
-
-    if (currentStep === 1 && step1) {
-      try {
-        const report = await reportService.createReport(step1);
-        // Ставим флаг ДО navigate, чтобы useEffect([id]) не запустил fetchReport
-        justCreatedRef.current = true;
-        setCurrentReport(report);
-        hydrateFromReport({ ...report, expertId: step1.expert_id });
-        setCurrentStep(2);
-        navigate(`/report/${report.id}`);
-      } catch (err) {
-        setSaveError((err as Error).message || "Ошибка создания черновика");
-      }
-      return;
-    }
-
-    if (!currentReport?.id) return;
-
-    try {
-      switch (currentStep) {
-        case 2:
-          if (step2) await reportService.updateStep2(currentReport.id, step2);
-          break;
-        case 3:
-          if (step3) await reportService.updateStep3(currentReport.id, step3);
-          break;
-        case 4:
-          if (step4) await reportService.updateStep4(currentReport.id, step4);
-          break;
-        case 5:
-          if (step5) await reportService.updateStep5(currentReport.id, step5);
-          break;
-      }
-
-      if (currentStep < TOTAL_STEPS) {
-        setCurrentStep(currentStep + 1);
-      }
-    } catch (err) {
-      setSaveError((err as Error).message || "Ошибка сохранения шага");
-    }
-  };
-
-  const handlePrevious = () => {
-    if (currentStep > 1) {
-      setCurrentStep(currentStep - 1);
-    }
-  };
-
-  const handleFinalize = async () => {
-    if (!currentReport?.id || isGenerating) return;
-
-    setIsGenerating(true);
-    setGenerateError(null);
-    setGenerateSuccess(false);
-
-    try {
-      if (step5) {
-        await reportService.updateStep5(currentReport.id, step5);
-      }
-
-      const result = await documentService.finalizeAndGenerate(currentReport.id);
-      const filename =
-        result.filename || `zaklyuchenie_${currentReport.report_number}.docx`;
-      await documentService.downloadDocument(result.download_url, filename);
-
-      setGenerateSuccess(true);
-      setTimeout(() => navigate("/"), 2000);
-    } catch (err) {
-      setGenerateError((err as Error).message || "Ошибка генерации документа");
-    } finally {
-      setIsGenerating(false);
-    }
-  };
+  const {
+    isGenerating,
+    generateError,
+    generateSuccess,
+    handleFinalize,
+  } = useReportFinalize({
+    reportId: currentReport?.id,
+  });
 
   const renderStep = () => {
     switch (currentStep) {
@@ -259,7 +114,7 @@ function ReportPage() {
 
           {currentStep < TOTAL_STEPS && (
             <WizardNavigation
-              onNext={handleNext}
+              onNext={() => handleNext(isValid)}
               onPrevious={handlePrevious}
               canGoNext={isValid}
               canGoPrevious={currentStep > 1}

@@ -1,4 +1,5 @@
 import type { RepairWork, SparePart, Material, PaintWork } from '@/types';
+export { formatSum } from '@/shared/lib/formatters';
 
 export const BT_COEFFICIENTS: Record<string, number> = {
   'BT-1': 1.0,
@@ -76,9 +77,4 @@ export function calcGrandTotal(params: {
     totalMaterials,
     grandTotal,
   };
-}
-
-export function formatSum(value: number | null | undefined): string {
-  if (value === null || value === undefined || Number.isNaN(value)) return '—';
-  return `${value.toLocaleString('ru-RU')} сум`;
 }

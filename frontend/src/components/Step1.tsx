@@ -1,18 +1,17 @@
 import { useEffect, useRef, useState } from "react";
-import { useReportStore } from "@/store/useReportStore";
 import { useFormStore } from "@/store/useFormStore";
-import { expertService } from "@/services/expertService";
+import { useExperts } from "@/hooks/useExperts";
+import { validateStep1 } from "@/utils/validators";
 
-import Input from "@/components/Input";
 import Alert from "@/components/Alert";
-import Button from "@/components/Button";
+import ExpertManagerModal from "@/components/ExpertManagerModal";
+import Input from "@/components/Input";
 
 function Step1({
   onValidationChange,
 }: {
   onValidationChange: (isValid: boolean) => void;
 }) {
-  const { experts, setExperts, isLoading, error, setError } = useReportStore();
   const { step1, setStep1 } = useFormStore();
 
   const [expertId, setExpertId] = useState("");
@@ -20,24 +19,30 @@ function Step1({
   const [reportDate, setReportDate] = useState("");
   const [applicationDate, setApplicationDate] = useState("");
   const [touched, setTouched] = useState<Record<string, boolean>>({});
-
-  // флаг: данные из store уже загружены в local state (защита от зацикливания)
   const initializedRef = useRef(false);
 
-  // Управление экспертами
-  const [showExpertModal, setShowExpertModal] = useState(false);
-  const [newExpertName, setNewExpertName] = useState("");
-  const [editingExpertId, setEditingExpertId] = useState<string | null>(null);
-  const [expertError, setExpertError] = useState<string | null>(null);
+  const {
+    experts,
+    isLoading,
+    error,
+    setError,
+    showExpertModal,
+    newExpertName,
+    setNewExpertName,
+    editingExpertId,
+    expertError,
+    setExpertError,
+    openExpertModal,
+    closeExpertModal,
+    handleAddExpert,
+    handleUpdateExpert,
+    handleDeleteExpert,
+    openEditExpert,
+  } = useExperts({
+    selectedExpertId: expertId,
+    onSelectExpert: setExpertId,
+  });
 
-  useEffect(() => {
-    if (experts.length === 0) {
-      fetchExperts();
-    }
-  }, []);
-
-  // Однократная инициализация local state из store (например, при открытии черновика)
-  // useRef предотвращает обратный цикл: store→local→store→local→...
   useEffect(() => {
     if (!initializedRef.current && step1) {
       initializedRef.current = true;
@@ -48,13 +53,15 @@ function Step1({
     }
   }, [step1]);
 
-  // Проверка валидности
   useEffect(() => {
-    const isValid = expertId && reportNumber && reportDate && applicationDate;
-    onValidationChange(!!isValid);
+    onValidationChange(validateStep1({
+      expert_id: expertId,
+      report_number: reportNumber,
+      report_date: reportDate,
+      application_date: applicationDate,
+    }));
   }, [expertId, reportNumber, reportDate, applicationDate, onValidationChange]);
 
-  // Синхронизация local state → store (только запись, не читает из store)
   useEffect(() => {
     setStep1({
       expert_id: expertId,
@@ -65,20 +72,8 @@ function Step1({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [expertId, reportNumber, reportDate, applicationDate]);
 
-  const fetchExperts = async () => {
-    try {
-      const data = await expertService.getExperts();
-      setExperts(data);
-      setError(null);
-    } catch (err) {
-      const errorMsg = (err as any)?.message || "Ошибка загрузки экспертов";
-      setError(errorMsg);
-      console.error("Error fetching experts:", err);
-    }
-  };
-
   const handleBlur = (field: string) => {
-    setTouched({ ...touched, [field]: true });
+    setTouched((prev) => ({ ...prev, [field]: true }));
   };
 
   const getFieldError = (field: string) => {
@@ -96,64 +91,6 @@ function Step1({
       default:
         return null;
     }
-  };
-
-  // === Управление экспертами ===
-
-  const handleAddExpert = async () => {
-    if (!newExpertName.trim()) {
-      setExpertError("Введите имя эксперта");
-      return;
-    }
-
-    setExpertError(null);
-    try {
-      const expert = await expertService.createExpert(newExpertName.trim());
-      setExperts([...experts, expert]);
-      setExpertId(expert.id);
-      setShowExpertModal(false);
-      setNewExpertName("");
-    } catch (err) {
-      setExpertError((err as Error).message || "Ошибка создания эксперта");
-    }
-  };
-
-  const handleUpdateExpert = async () => {
-    if (!editingExpertId || !newExpertName.trim()) {
-      setExpertError("Введите имя эксперта");
-      return;
-    }
-
-    setExpertError(null);
-    try {
-      const expert = await expertService.updateExpert(
-        editingExpertId,
-        newExpertName.trim(),
-      );
-      setExperts(experts.map((e) => (e.id === editingExpertId ? expert : e)));
-      setEditingExpertId(null);
-      setNewExpertName("");
-    } catch (err) {
-      setExpertError((err as Error).message || "Ошибка обновления эксперта");
-    }
-  };
-
-  const handleDeleteExpert = async (id: string) => {
-    if (!confirm("Удалить этого эксперта?")) return;
-
-    try {
-      await expertService.deleteExpert(id);
-      setExperts(experts.filter((e) => e.id !== id));
-      if (expertId === id) setExpertId("");
-    } catch (err) {
-      setExpertError((err as Error).message || "Ошибка удаления эксперта");
-    }
-  };
-
-  const openEditExpert = (expert: { id: string; full_name: string }) => {
-    setEditingExpertId(expert.id);
-    setNewExpertName(expert.full_name);
-    setExpertError(null);
   };
 
   return (
@@ -182,12 +119,7 @@ function Step1({
             </label>
             <button
               type="button"
-              onClick={() => {
-                setShowExpertModal(true);
-                setEditingExpertId(null);
-                setNewExpertName("");
-                setExpertError(null);
-              }}
+              onClick={openExpertModal}
               className="text-sm text-blue-600 hover:text-blue-800"
             >
               + Добавить эксперта
@@ -196,9 +128,7 @@ function Step1({
           <select
             id="expert"
             value={expertId}
-            onChange={(e) => {
-              setExpertId(e.target.value);
-            }}
+            onChange={(event) => setExpertId(event.target.value)}
             onBlur={() => handleBlur("expertId")}
             disabled={isLoading}
             className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors ${
@@ -227,9 +157,7 @@ function Step1({
           id="reportNumber"
           label="Номер заключения"
           value={reportNumber}
-          onChange={(e) => {
-            setReportNumber(e.target.value);
-          }}
+          onChange={(event) => setReportNumber(event.target.value)}
           onBlur={() => handleBlur("reportNumber")}
           error={
             touched["reportNumber"]
@@ -245,9 +173,7 @@ function Step1({
           id="reportDate"
           label="Дата заключения"
           value={reportDate}
-          onChange={(e) => {
-            setReportDate(e.target.value);
-          }}
+          onChange={(event) => setReportDate(event.target.value)}
           onBlur={() => handleBlur("reportDate")}
           error={
             touched["reportDate"]
@@ -262,9 +188,7 @@ function Step1({
           id="applicationDate"
           label="Дата подачи заявки"
           value={applicationDate}
-          onChange={(e) => {
-            setApplicationDate(e.target.value);
-          }}
+          onChange={(event) => setApplicationDate(event.target.value)}
           onBlur={() => handleBlur("applicationDate")}
           error={
             touched["applicationDate"]
@@ -275,86 +199,20 @@ function Step1({
         />
       </div>
 
-      {/* Модальное окно управления экспертами */}
       {showExpertModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-md">
-            <h3 className="text-lg font-semibold mb-4">
-              {editingExpertId ? "Редактировать эксперта" : "Добавить эксперта"}
-            </h3>
-
-            {expertError && (
-              <Alert
-                type="error"
-                message={expertError}
-                onClose={() => setExpertError(null)}
-              />
-            )}
-
-            <Input
-              label="Ф.И.О. эксперта"
-              value={newExpertName}
-              onChange={(e) => setNewExpertName(e.target.value)}
-              placeholder="Иванов И.И."
-            />
-
-            <div className="flex gap-2 mt-4">
-              <Button
-                variant="primary"
-                onClick={editingExpertId ? handleUpdateExpert : handleAddExpert}
-                fullWidth
-              >
-                {editingExpertId ? "Сохранить" : "Добавить"}
-              </Button>
-              <Button
-                variant="secondary"
-                onClick={() => {
-                  setShowExpertModal(false);
-                  setEditingExpertId(null);
-                  setNewExpertName("");
-                }}
-                fullWidth
-              >
-                Отмена
-              </Button>
-            </div>
-
-            {/* Список экспертов для редактирования */}
-            {!editingExpertId && experts.length > 0 && (
-              <div className="mt-6 border-t pt-4">
-                <h4 className="text-sm font-medium text-gray-600 mb-2">
-                  Список экспертов:
-                </h4>
-                <ul className="space-y-2 max-h-48 overflow-y-auto">
-                  {experts.map((expert) => (
-                    <li
-                      key={expert.id}
-                      className="flex items-center justify-between text-sm"
-                    >
-                      <span>{expert.full_name}</span>
-                      <div className="flex gap-2">
-                        <button
-                          type="button"
-                          onClick={() => openEditExpert(expert)}
-                          className="text-blue-600 hover:text-blue-800"
-                        >
-                          ✏️
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleDeleteExpert(expert.id)}
-                          className="text-red-600 hover:text-red-800"
-                        >
-                          🗑️
-                        </button>
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-          </div>
-        </div>
+        <ExpertManagerModal
+          experts={experts}
+          newExpertName={newExpertName}
+          editingExpertId={editingExpertId}
+          expertError={expertError}
+          onNameChange={setNewExpertName}
+          onErrorClose={() => setExpertError(null)}
+          onAddExpert={handleAddExpert}
+          onUpdateExpert={handleUpdateExpert}
+          onDeleteExpert={handleDeleteExpert}
+          onEditExpert={openEditExpert}
+          onClose={closeExpertModal}
+        />
       )}
     </div>
   );

@@ -1,7 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { useAuthStore } from "@/store/useAuthStore";
-import { authService } from "@/services/authService";
+import { authService } from "@/features/auth/api/authApi";
 import Login from "@/pages/Login";
 import Dashboard from "@/pages/Dashboard";
 import ReportPage from "@/pages/ReportPage";
@@ -11,26 +11,21 @@ import PrivateRoute from "@/components/PrivateRoute";
 import ErrorBoundary from "@/components/ErrorBoundary";
 
 function App() {
-  const { isAuthenticated, setAuth, logout } = useAuthStore();
+  const { isAuthenticated, token, setAuth, logout } = useAuthStore();
   const [isInitializing, setIsInitializing] = useState(true);
 
   useEffect(() => {
-    // Restore auth state from localStorage on app load
     const initializeAuth = async () => {
-      try {
-        const token = localStorage.getItem("token");
-        const storedUser = localStorage.getItem("auth-user");
+      if (!token) {
+        setIsInitializing(false);
+        return;
+      }
 
-        if (token && !isAuthenticated) {
-          const currentUser = await authService.getCurrentUser();
-          setAuth(token, currentUser);
-        } else if (!token && storedUser) {
-          localStorage.removeItem("auth-user");
-        }
+      try {
+        const currentUser = await authService.getCurrentUser();
+        setAuth(token, currentUser);
       } catch (error) {
         console.error("Error restoring auth state:", error);
-        localStorage.removeItem("token");
-        localStorage.removeItem("auth-user");
         logout();
       } finally {
         setIsInitializing(false);
@@ -38,7 +33,7 @@ function App() {
     };
 
     initializeAuth();
-  }, [isAuthenticated, setAuth, logout]);
+  }, [token, setAuth, logout]);
 
   if (isInitializing) {
     return (
