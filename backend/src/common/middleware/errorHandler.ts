@@ -12,7 +12,9 @@ export const errorHandler: ErrorRequestHandler = (error, _req, res, _next) => {
 
     res.status(error.statusCode).json({
       error: error.message,
-      ...(details ? { details } : {}),
+      ...(details && Object.keys(details as object).length > 0
+        ? { details }
+        : {}),
     });
     return;
   }

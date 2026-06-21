@@ -1,11 +1,13 @@
 import bcrypt from 'bcryptjs';
 import { eq } from 'drizzle-orm';
-import type { SignOptions } from 'jsonwebtoken';
 import jwt from 'jsonwebtoken';
 import { notFound, unauthorized } from '../../common/errors/httpError.js';
 import { env } from '../../config/env.js';
 import { db } from '../../db/index.js';
 import { creators } from '../../db/schema.js';
+
+// Pre-hashed dummy to prevent timing attacks on non-existent users
+const DUMMY_HASH = '$2a$10$abcdefghijklmnopqrstuuABCDEFGHIJKLMNOPQRSTUVWX012';
 
 export const authService = {
   async login(login: string, password: string) {
@@ -15,13 +17,11 @@ export const authService = {
       .where(eq(creators.login, login))
       .limit(1);
 
-    if (!creator) {
-      throw unauthorized('Invalid login or password');
-    }
+    // Always run bcrypt.compare to prevent timing-based user enumeration
+    const hashToCompare = creator?.passwordHash ?? DUMMY_HASH;
+    const isValidPassword = await bcrypt.compare(password, hashToCompare);
 
-    const isValidPassword = await bcrypt.compare(password, creator.passwordHash);
-
-    if (!isValidPassword) {
+    if (!creator || !isValidPassword) {
       throw unauthorized('Invalid login or password');
     }
 
@@ -32,7 +32,7 @@ export const authService = {
         role: creator.role,
       },
       env.JWT_SECRET,
-      { expiresIn: env.JWT_EXPIRES_IN } as SignOptions,
+      { expiresIn: env.JWT_EXPIRES_IN } as jwt.SignOptions,
     );
 
     return {
@@ -47,7 +47,11 @@ export const authService = {
 
   async getCurrentUser(creatorId: string) {
     const [creator] = await db
-      .select()
+      .select({
+        id: creators.id,
+        fullName: creators.fullName,
+        role: creators.role,
+      })
       .from(creators)
       .where(eq(creators.id, creatorId))
       .limit(1);

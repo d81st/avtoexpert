@@ -3,8 +3,9 @@ import { eq } from 'drizzle-orm';
 import { notFound } from '../../common/errors/httpError.js';
 import { db } from '../../db/index.js';
 import { creators, reports } from '../../db/schema.js';
-import { reportRepository } from '../reports/reports.repository.js';
 import { storageService } from '../../shared/services/storage.service.js';
+import { invalidateTemplateCache } from '../reports/docGenerator.js';
+import { reportRepository } from '../reports/reports.repository.js';
 
 export const adminService = {
   async listAllReports(query: {
@@ -75,6 +76,7 @@ export const adminService = {
 
     const templateBuffer = Buffer.from(base64Data, 'base64');
     storageService.writeFile(templatePath, templateBuffer);
+    invalidateTemplateCache();
 
     return { message: 'Template updated successfully' };
   },

@@ -16,10 +16,21 @@ export const validate =
         req.body = schemas.body.parse(req.body);
       }
       if (schemas.params) {
-        req.params = schemas.params.parse(req.params) as Record<string, string>;
+        const parsed = schemas.params.parse(req.params);
+        Object.defineProperty(req, 'params', {
+          value: parsed,
+          writable: true,
+          configurable: true,
+        });
       }
       if (schemas.query) {
-        req.query = schemas.query.parse(req.query) as Request['query'];
+        const parsed = schemas.query.parse(req.query);
+        // Express 5 makes req.query a read-only getter.
+        Object.defineProperty(req, 'query', {
+          value: parsed,
+          writable: true,
+          configurable: true,
+        });
       }
       next();
     } catch (error) {

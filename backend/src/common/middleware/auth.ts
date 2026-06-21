@@ -38,7 +38,8 @@ export const adminMiddleware = (
   next: NextFunction,
 ) => {
   if (req.creator?.role !== 'admin') {
-    throw forbidden('Admin access required');
+    next(forbidden('Admin access required'));
+    return;
   }
   next();
 };

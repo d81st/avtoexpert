@@ -1,3 +1,4 @@
+import * as crypto from 'node:crypto';
 import * as fs from 'node:fs';
 import path from 'node:path';
 import multer from 'multer';
@@ -14,21 +15,29 @@ const storage = multer.diskStorage({
     cb(null, uploadsDir);
   },
   filename: (_req, file, cb) => {
-    const uniqueSuffix = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
+    const uniqueSuffix = crypto.randomBytes(16).toString('hex');
     const ext = path.extname(file.originalname).toLowerCase();
     cb(null, `photo-${uniqueSuffix}${ext}`);
   },
 });
+
+const ALLOWED_MIMES = new Set([
+  'image/jpeg',
+  'image/png',
+  'image/heic',
+  'image/heif',
+]);
+
+const ALLOWED_EXTENSIONS = new Set(['.jpg', '.jpeg', '.png', '.heic']);
 
 const fileFilter = (
   _req: Express.Request,
   file: Express.Multer.File,
   cb: multer.FileFilterCallback,
 ) => {
-  const allowedFormats = ['.jpg', '.jpeg', '.png', '.heic'];
   const ext = path.extname(file.originalname).toLowerCase();
 
-  if (allowedFormats.includes(ext)) {
+  if (ALLOWED_EXTENSIONS.has(ext) && ALLOWED_MIMES.has(file.mimetype)) {
     cb(null, true);
     return;
   }

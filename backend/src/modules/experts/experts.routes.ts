@@ -25,7 +25,10 @@ router.post(
   validate({ body: createExpertSchema }),
   async (req: AuthRequest, res) => {
     const data = req.body as z.infer<typeof createExpertSchema>;
-    const result = await expertService.createExpert(req.creator!.id, data.full_name);
+    const result = await expertService.createExpert(
+      req.creator!.id,
+      data.full_name,
+    );
     res.status(201).json(result);
   },
 );

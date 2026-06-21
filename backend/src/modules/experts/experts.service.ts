@@ -1,8 +1,5 @@
 import { and, eq } from 'drizzle-orm';
-import {
-  notFound,
-  unauthorized,
-} from '../../common/errors/httpError.js';
+import { forbidden, notFound } from '../../common/errors/httpError.js';
 import { db } from '../../db/index.js';
 import { experts } from '../../db/schema.js';
 
@@ -48,7 +45,7 @@ export const expertService = {
     }
 
     if (existing.creatorId !== creatorId) {
-      throw unauthorized('You do not have permission to modify this expert');
+      throw forbidden('You do not have permission to modify this expert');
     }
 
     return existing;

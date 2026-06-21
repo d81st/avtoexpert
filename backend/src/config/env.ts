@@ -17,8 +17,7 @@ const envSchema = z.object({
 
 const parsed = envSchema.parse(process.env);
 
-const uploadDir =
-  parsed.UPLOAD_DIR ?? path.resolve(process.cwd(), 'uploads');
+const uploadDir = parsed.UPLOAD_DIR ?? path.resolve(process.cwd(), 'uploads');
 const templateDir =
   parsed.TEMPLATE_DIR ?? path.resolve(process.cwd(), 'templates');
 

@@ -39,12 +39,15 @@ export const reportRepository = {
     return report ?? null;
   },
 
-  async createReport(creatorId: string, data: {
-    expert_id: string;
-    report_number: string;
-    report_date: Date;
-    application_date: Date;
-  }) {
+  async createReport(
+    creatorId: string,
+    data: {
+      expert_id: string;
+      report_number: string;
+      report_date: Date;
+      application_date: Date;
+    },
+  ) {
     const [newReport] = await db
       .insert(reports)
       .values({
@@ -61,7 +64,11 @@ export const reportRepository = {
     return newReport;
   },
 
-  async saveStep2(id: string, creatorId: string, data: Record<string, unknown>) {
+  async saveStep2(
+    id: string,
+    creatorId: string,
+    data: Record<string, unknown>,
+  ) {
     const [updatedReport] = await db
       .update(reports)
       .set({ ...data, currentStep: 2, updatedAt: new Date() })
@@ -75,7 +82,11 @@ export const reportRepository = {
     return updatedReport;
   },
 
-  async saveStep3(id: string, creatorId: string, data: Record<string, unknown>) {
+  async saveStep3(
+    id: string,
+    creatorId: string,
+    data: Record<string, unknown>,
+  ) {
     const [updatedReport] = await db
       .update(reports)
       .set({ ...data, currentStep: 3, updatedAt: new Date() })
@@ -123,7 +134,11 @@ export const reportRepository = {
     return updatedReport;
   },
 
-  async autosave(id: string, creatorId: string, payload: Record<string, unknown>) {
+  async autosave(
+    id: string,
+    creatorId: string,
+    payload: Record<string, unknown>,
+  ) {
     await db.transaction(async (tx) => {
       const reportUpdates = reportRepository.getUpdatePayload(payload);
       const hasStep4Payload =
@@ -182,13 +197,14 @@ export const reportRepository = {
       );
     }
 
-    const whereClause =
-      conditions.length > 0 ? and(...conditions) : undefined;
+    const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
 
     const [{ count }] = await db
-      .select({ count: sql<number>`count(*)` })
+      .select({ count: sql<string>`count(*)` })
       .from(reports)
       .where(whereClause);
+
+    const total = Number(count);
 
     const result = await db
       .select()
@@ -203,8 +219,8 @@ export const reportRepository = {
       pagination: {
         page,
         limit,
-        total: Number(count),
-        totalPages: Math.ceil(Number(count) / limit),
+        total,
+        totalPages: Math.ceil(total / limit),
       },
     };
   },
@@ -292,13 +308,31 @@ export const reportRepository = {
   // Internal helpers
   getUpdatePayload(data: Record<string, unknown>) {
     const allowedFields = [
-      'carModel', 'carYear', 'carColor', 'bodyType', 'licensePlate',
-      'ownerName', 'techPassport', 'techPassportPlace', 'mileage',
-      'odometerStatus', 'mileageByMethod', 'vinCode', 'engineNumber',
-      'transmissionType', 'cameraModel', 'passportMatch',
-      'productionStatus', 'analog1Mileage', 'analog1Price',
-      'analog2Mileage', 'analog2Price', 'analog3Mileage', 'analog3Price',
-      'factoryPrice', 'depreciationPct',
+      'carModel',
+      'carYear',
+      'carColor',
+      'bodyType',
+      'licensePlate',
+      'ownerName',
+      'techPassport',
+      'techPassportPlace',
+      'mileage',
+      'odometerStatus',
+      'mileageByMethod',
+      'vinCode',
+      'engineNumber',
+      'transmissionType',
+      'cameraModel',
+      'passportMatch',
+      'productionStatus',
+      'analog1Mileage',
+      'analog1Price',
+      'analog2Mileage',
+      'analog2Price',
+      'analog3Mileage',
+      'analog3Price',
+      'factoryPrice',
+      'depreciationPct',
     ] as const;
 
     return Object.fromEntries(

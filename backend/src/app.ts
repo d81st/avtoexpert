@@ -5,7 +5,7 @@ import rateLimit from 'express-rate-limit';
 import helmet from 'helmet';
 import morgan from 'morgan';
 import { errorHandler } from './common/middleware/errorHandler.js';
-import { env } from './config/env';
+import { env } from './config/env.js';
 import adminRoutes from './modules/admin/admin.routes.js';
 import authRoutes from './modules/auth/auth.routes.js';
 import expertsRoutes from './modules/experts/experts.routes.js';

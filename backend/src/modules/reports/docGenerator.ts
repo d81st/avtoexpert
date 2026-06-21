@@ -1,9 +1,104 @@
-import * as fs from 'node:fs';
+import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import Docxtemplater from 'docxtemplater';
 import PizZip from 'pizzip';
 import { env } from '../../config/env.js';
 import { logger } from '../../shared/logger/logger.js';
+
+// --- DB input types (Drizzle ORM format) ---
+
+interface DbRepairWork {
+  partName?: string | null;
+  partType?: string | null;
+  complexity?: string | null;
+  price?: number | null;
+  [key: string]: unknown;
+}
+
+interface DbPaintWork {
+  partName?: string | null;
+  paintPrice?: number | null;
+  polishPrice?: number | null;
+  [key: string]: unknown;
+}
+
+interface DbSparePart {
+  name?: string | null;
+  qty?: number | null;
+  price?: number | null;
+  [key: string]: unknown;
+}
+
+interface DbMaterial {
+  name?: string | null;
+  qty?: number | null;
+  price?: number | null;
+  [key: string]: unknown;
+}
+
+// --- Template output types ---
+
+interface TemplateRepairWork {
+  part_name: string;
+  part_type: string;
+  complexity: string;
+  price: number;
+}
+
+interface TemplatePaintWork {
+  part_name: string;
+  paint_price: number;
+  polish_price: number;
+}
+
+interface TemplateSparePart {
+  name: string;
+  qty: number;
+  price: number;
+}
+
+interface TemplateMaterial {
+  name: string;
+  qty: number;
+  price: number;
+}
+
+// --- Collection mapping functions ---
+
+export function mapRepairWorks(items: DbRepairWork[]): TemplateRepairWork[] {
+  return items.map((item) => ({
+    part_name: item.partName ?? '',
+    part_type: item.partType ?? '',
+    complexity: item.complexity ?? '',
+    price: item.price ?? 0,
+  }));
+}
+
+export function mapPaintWorks(items: DbPaintWork[]): TemplatePaintWork[] {
+  return items.map((item) => ({
+    part_name: item.partName ?? '',
+    paint_price: item.paintPrice ?? 0,
+    polish_price: item.polishPrice ?? 0,
+  }));
+}
+
+export function mapSpareParts(items: DbSparePart[]): TemplateSparePart[] {
+  return items.map((item) => ({
+    name: item.name ?? '',
+    qty: item.qty ?? 0,
+    price: item.price ?? 0,
+  }));
+}
+
+export function mapMaterials(items: DbMaterial[]): TemplateMaterial[] {
+  return items.map((item) => ({
+    name: item.name ?? '',
+    qty: item.qty ?? 0,
+    price: item.price ?? 0,
+  }));
+}
+
+// --- Report data interface ---
 
 interface ReportData {
   expertName: string;
@@ -34,26 +129,33 @@ interface ReportData {
   depreciationPct: number;
   marketPrice: number;
   hourlyRate: number;
-  repairWorks: unknown[];
-  paintWorks: unknown[];
-  spareParts: unknown[];
-  materials: unknown[];
+  repairWorks: DbRepairWork[];
+  paintWorks: DbPaintWork[];
+  spareParts: DbSparePart[];
+  materials: DbMaterial[];
   grandTotal: number;
 }
 
-export class DocGenerator {
-  private templatePath: string;
+// Cache template in memory after first read
+let templateCache: Buffer | null = null;
 
-  constructor() {
-    this.templatePath = path.join(
-      env.TEMPLATE_DIR,
-      'expertise.docx',
-    );
+async function getTemplate(): Promise<Buffer> {
+  if (!templateCache) {
+    const templatePath = path.join(env.TEMPLATE_DIR, 'expertise.docx');
+    templateCache = await fs.readFile(templatePath);
   }
+  return templateCache;
+}
 
+/** Clear cached template (call after template upload) */
+export function invalidateTemplateCache(): void {
+  templateCache = null;
+}
+
+export class DocGenerator {
   async generateDocument(data: ReportData): Promise<Buffer> {
     try {
-      const content = fs.readFileSync(this.templatePath, 'binary');
+      const content = await getTemplate();
       const zip = new PizZip(content);
       const doc = new Docxtemplater(zip, {
         paragraphLoop: true,
@@ -89,10 +191,10 @@ export class DocGenerator {
         depreciation_pct: data.depreciationPct,
         market_price: data.marketPrice,
         hourly_rate: data.hourlyRate,
-        repair_works: data.repairWorks,
-        paint_works: data.paintWorks,
-        spare_parts: data.spareParts,
-        materials: data.materials,
+        repair_works: mapRepairWorks(data.repairWorks),
+        paint_works: mapPaintWorks(data.paintWorks),
+        spare_parts: mapSpareParts(data.spareParts),
+        materials: mapMaterials(data.materials),
         grand_total: data.grandTotal,
       });
 
@@ -101,8 +203,9 @@ export class DocGenerator {
         compression: 'DEFLATE',
       }) as Buffer;
     } catch (error) {
-      logger.error('Document generation error', error);
-      throw new Error('Document generation error');
+      const originalMessage = error instanceof Error ? error.message : String(error);
+      logger.error('Document generation error', { error, originalMessage });
+      throw new Error(`Document generation error: ${originalMessage}`, { cause: error });
     }
   }
 }

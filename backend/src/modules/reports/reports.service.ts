@@ -18,7 +18,10 @@ export const reportService = {
       application_date: Date;
     },
   ) {
-    const expert = await expertService.verifyOwnership(creatorId, data.expert_id);
+    const expert = await expertService.verifyOwnership(
+      creatorId,
+      data.expert_id,
+    );
     if (!expert) {
       throw badRequest('Expert does not belong to current creator');
     }
@@ -45,11 +48,19 @@ export const reportService = {
     };
   },
 
-  async saveStep2(id: string, creatorId: string, data: Record<string, unknown>) {
+  async saveStep2(
+    id: string,
+    creatorId: string,
+    data: Record<string, unknown>,
+  ) {
     return reportRepository.saveStep2(id, creatorId, data);
   },
 
-  async saveStep3(id: string, creatorId: string, data: Record<string, unknown>) {
+  async saveStep3(
+    id: string,
+    creatorId: string,
+    data: Record<string, unknown>,
+  ) {
     return reportRepository.saveStep3(id, creatorId, data);
   },
 
@@ -61,7 +72,11 @@ export const reportService = {
     return reportRepository.saveStep5(id, creatorId);
   },
 
-  async autosave(id: string, creatorId: string, payload: Record<string, unknown>) {
+  async autosave(
+    id: string,
+    creatorId: string,
+    payload: Record<string, unknown>,
+  ) {
     return reportRepository.autosave(id, creatorId, payload);
   },
 
@@ -116,7 +131,10 @@ export const reportService = {
     report: Record<string, unknown>,
     collections: {
       repairWorksList: { price: number | string | null }[];
-      paintWorksList: { paintPrice: number | string | null; polishPrice: number | string | null }[];
+      paintWorksList: {
+        paintPrice: number | string | null;
+        polishPrice: number | string | null;
+      }[];
       sparePartsList: { price: number | string | null; qty: number | null }[];
       materialsList: { price: number | string | null; qty: number | null }[];
     },
@@ -220,8 +238,12 @@ export const reportService = {
     const documentBuffer = await docGenerator.generateDocument({
       expertName: expert.fullName,
       reportNumber: report.reportNumber || '',
-      reportDate: new Date(report.reportDate as Date).toLocaleDateString('ru-RU'),
-      applicationDate: new Date(report.applicationDate as Date).toLocaleDateString('ru-RU'),
+      reportDate: new Date(report.reportDate as Date).toLocaleDateString(
+        'ru-RU',
+      ),
+      applicationDate: new Date(
+        report.applicationDate as Date,
+      ).toLocaleDateString('ru-RU'),
       carModel: report.carModel || '',
       carYear: report.carYear || 0,
       carColor: report.carColor || '',
@@ -260,7 +282,7 @@ export const reportService = {
       report.reportNumber,
     );
     const filePath = path.join(storageService.getUploadsDir(), filename);
-    storageService.writeFile(filePath, documentBuffer);
+    await storageService.writeFileAsync(filePath, documentBuffer);
 
     return {
       status: 'completed',
@@ -338,7 +360,7 @@ export const reportService = {
 
     if (photo.filePath) {
       const filePath = path.join(storageService.getPhotosDir(), photo.filePath);
-      storageService.deleteFile(filePath);
+      await storageService.deleteFileAsync(filePath);
     }
 
     await reportRepository.deletePhoto(photoId, reportId);
