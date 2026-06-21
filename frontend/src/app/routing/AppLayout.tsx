@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuthStore } from "@/shared/auth/useAuthStore";
-import Button from "@/shared/ui/Button";
+import { Button } from "@/components/ui/button";
 
 interface AppLayoutProps {
   children: ReactNode;
@@ -40,7 +40,7 @@ export default function AppLayout({
               {user?.full_name}
             </span>
             {headerActions}
-            <Button onClick={handleLogout} variant="danger" size="sm">
+            <Button onClick={handleLogout} variant="destructive" size="sm">
               Выйти
             </Button>
           </div>

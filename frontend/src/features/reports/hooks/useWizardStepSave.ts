@@ -10,6 +10,7 @@ interface UseWizardStepSaveReturn {
   handleSaveAndNext: () => void;
   mutationError: string | null;
   resetErrors: () => void;
+  isSaving: boolean;
 }
 
 export function useWizardStepSave({
@@ -31,6 +32,13 @@ export function useWizardStepSave({
     saveStep5Mutation,
     handleNext,
   } = wizard;
+
+  const isSaving =
+    createMutation.isPending ||
+    saveStep2Mutation.isPending ||
+    saveStep3Mutation.isPending ||
+    saveStep4Mutation.isPending ||
+    saveStep5Mutation.isPending;
 
   const mutationError =
     createMutation.error?.message ||
@@ -90,5 +98,6 @@ export function useWizardStepSave({
     handleSaveAndNext,
     mutationError,
     resetErrors,
+    isSaving,
   };
 }

@@ -3,11 +3,15 @@ import { useForm } from "react-hook-form";
 import { useNavigate } from "react-router-dom";
 import { useAdminReportsQuery } from "../model/adminQueries";
 import { formatDate, formatProgress, formatSum } from "@/shared/lib/formatters";
-import StatusBadge from "@/shared/ui/StatusBadge";
-import Button from "@/shared/ui/Button";
-import Loader from "@/shared/ui/Loader";
-import Alert from "@/shared/ui/Alert";
-import Card from "@/shared/ui/Card";
+import { Badge } from "@/components/ui/badge";
+import { getStatusConfig } from "@/lib/status-variants";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
+import { Loader2 } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
+import { AppAlert } from "@/components/ui/app-alert";
+import { Card, CardContent } from "@/components/ui/card";
 
 interface SearchForm {
   search: string;
@@ -42,12 +46,18 @@ export default function AdminReportsTab() {
   };
 
   if (reportsQuery.isLoading) {
-    return <Loader message="Загрузка заключений..." />;
+    return (
+      <div className="space-y-3">
+        {Array.from({ length: 5 }).map((_, i) => (
+          <Skeleton key={i} className="h-12 w-full" />
+        ))}
+      </div>
+    );
   }
 
   if (error) {
     return (
-      <Alert
+      <AppAlert
         type="error"
         message={error}
         onClose={() => void reportsQuery.refetch()}
@@ -58,17 +68,18 @@ export default function AdminReportsTab() {
   return (
     <>
       <form onSubmit={onSearch} className="mb-6 flex flex-col gap-2 sm:flex-row">
-        <input
+        <Input
           type="text"
           placeholder="Поиск по номеру, госномеру, владельцу..."
-          className="form-control flex-1 px-4 py-3"
+          className="flex-1"
           {...register("search")}
         />
-        <Button type="submit" variant="secondary" isLoading={reportsQuery.isFetching}>
+        <Button type="submit" variant="outline" disabled={reportsQuery.isFetching}>
+          {reportsQuery.isFetching && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
           Найти
         </Button>
         {searchQuery && (
-          <Button type="button" variant="secondary" onClick={handleClearSearch}>
+          <Button type="button" variant="outline" onClick={handleClearSearch}>
             Сбросить
           </Button>
         )}
@@ -76,66 +87,71 @@ export default function AdminReportsTab() {
 
       {reports.length === 0 ? (
         <Card className="text-center">
-          <p className="text-gray-500">Заключения не найдены</p>
+          <CardContent className="pt-6">
+            <p className="text-gray-500">Заключения не найдены</p>
+          </CardContent>
         </Card>
       ) : (
         <>
-          <div className="data-table-wrap">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">№</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Дата</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Статус</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Прогресс</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Госномер</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Владелец</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Сумма</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Действия</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200">
-                {reports.map((report) => (
-                  <tr key={report.id} className="hover:bg-gray-50">
-                    <td className="px-4 py-3 text-sm font-medium">
-                      {report.reportNumber || "-"}
-                    </td>
-                    <td className="px-4 py-3 text-sm text-gray-500">
-                      {formatDate(report.reportDate)}
-                    </td>
-                    <td className="px-4 py-3">
-                      <StatusBadge status={report.status} />
-                    </td>
-                    <td className="px-4 py-3 text-sm">
-                      {formatProgress(report.currentStep)}
-                    </td>
-                    <td className="px-4 py-3 text-sm">
-                      {report.licensePlate || "-"}
-                    </td>
-                    <td className="px-4 py-3 text-sm">
-                      {report.ownerName || "-"}
-                    </td>
-                    <td className="px-4 py-3 text-sm">
-                      {formatSum(report.grandTotal)}
-                    </td>
-                    <td className="px-4 py-3">
-                      <button
-                        onClick={() => navigate(`/report/${report.id}`)}
-                        className="text-blue-600 hover:text-blue-900 text-sm"
-                      >
-                        Открыть
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>№</TableHead>
+                <TableHead>Дата</TableHead>
+                <TableHead>Статус</TableHead>
+                <TableHead>Прогресс</TableHead>
+                <TableHead>Госномер</TableHead>
+                <TableHead>Владелец</TableHead>
+                <TableHead>Сумма</TableHead>
+                <TableHead>Действия</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {reports.map((report) => (
+                <TableRow key={report.id}>
+                  <TableCell className="font-medium">
+                    {report.reportNumber || "-"}
+                  </TableCell>
+                  <TableCell className="text-muted-foreground">
+                    {formatDate(report.reportDate)}
+                  </TableCell>
+                  <TableCell>
+                    {(() => {
+                      const { variant, label } = getStatusConfig(report.status);
+                      return <Badge variant={variant}>{label}</Badge>;
+                    })()}
+                  </TableCell>
+                  <TableCell>
+                    {formatProgress(report.currentStep)}
+                  </TableCell>
+                  <TableCell>
+                    {report.licensePlate || "-"}
+                  </TableCell>
+                  <TableCell>
+                    {report.ownerName || "-"}
+                  </TableCell>
+                  <TableCell>
+                    {formatSum(report.grandTotal)}
+                  </TableCell>
+                  <TableCell>
+                    <Button
+                      variant="link"
+                      size="sm"
+                      className="text-blue-600 hover:text-blue-900 p-0 h-auto"
+                      onClick={() => navigate(`/report/${report.id}`)}
+                    >
+                      Открыть
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
 
           {pagination && pagination.totalPages > 1 && (
             <div className="mt-4 flex justify-center gap-2">
               <Button
-                variant="secondary"
+                variant="outline"
                 size="sm"
                 disabled={currentPage <= 1}
                 onClick={() => setCurrentPage((page) => page - 1)}
@@ -146,7 +162,7 @@ export default function AdminReportsTab() {
                 {currentPage} из {pagination.totalPages}
               </span>
               <Button
-                variant="secondary"
+                variant="outline"
                 size="sm"
                 disabled={currentPage >= pagination.totalPages}
                 onClick={() => setCurrentPage((page) => page + 1)}

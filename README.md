@@ -292,3 +292,106 @@ curl -X POST http://localhost:3000/api/login \
 ### Frontend Check
 
 Открить браузер и перейти на `http://localhost:5173`. Должна загрузиться страница входа.
+
+---
+
+## Вариант C: PostgreSQL установлен напрямую на Windows (без Docker)
+
+> Самый стабильный вариант для Windows-разработки. PostgreSQL работает как системная служба, не зависит от Docker/WSL.
+
+### C.1. Установка PostgreSQL
+
+Установить через winget (PowerShell от администратора):
+
+```powershell
+winget install PostgreSQL.PostgreSQL.16
+```
+
+Или скачать установщик с [postgresql.org/download/windows](https://www.postgresql.org/download/windows/).
+
+При установке:
+- Пароль суперпользователя: `postgres`
+- Порт: `5432` (по умолчанию)
+- Locale: по умолчанию
+
+### C.2. Управление службой
+
+PostgreSQL работает как Windows-сервис `postgresql-x64-16`.
+
+```powershell
+# Проверить статус
+Get-Service postgresql-x64-16
+
+# Остановить
+Stop-Service postgresql-x64-16
+
+# Запустить
+Start-Service postgresql-x64-16
+
+# Перезапустить
+Restart-Service postgresql-x64-16
+```
+
+Служба запускается автоматически при загрузке Windows — ничего дополнительно запускать не нужно.
+
+### C.3. Работа через psql (командная строка)
+
+psql находится в `C:\Program Files\PostgreSQL\16\bin\`. Можно добавить в PATH или использовать полный путь.
+
+```powershell
+# Подключиться к PostgreSQL
+& "C:\Program Files\PostgreSQL\16\bin\psql.exe" -U postgres -h localhost
+
+# Создать базу данных
+& "C:\Program Files\PostgreSQL\16\bin\psql.exe" -U postgres -h localhost -c "CREATE DATABASE avtoexpert;"
+
+# Посмотреть список баз
+& "C:\Program Files\PostgreSQL\16\bin\psql.exe" -U postgres -h localhost -c "\l"
+
+# Посмотреть таблицы в базе
+& "C:\Program Files\PostgreSQL\16\bin\psql.exe" -U postgres -h localhost -d avtoexpert -c "\dt"
+
+# Выполнить произвольный SQL
+& "C:\Program Files\PostgreSQL\16\bin\psql.exe" -U postgres -h localhost -d avtoexpert -c "SELECT * FROM creators;"
+```
+
+Чтобы не вводить пароль каждый раз, установите переменную окружения:
+
+```powershell
+$env:PGPASSWORD = "postgres"
+```
+
+### C.4. pgAdmin (GUI)
+
+Вместе с PostgreSQL устанавливается **pgAdmin 4** — графический интерфейс. Найти его можно в меню Пуск → PostgreSQL 16 → pgAdmin 4.
+
+В pgAdmin:
+1. Подключиться к серверу `localhost:5432` (user: `postgres`, password: `postgres`)
+2. Найти базу `avtoexpert` → Schemas → Tables — там будут все таблицы проекта
+
+### C.5. Настройка проекта
+
+`backend/.env`:
+
+```env
+DATABASE_URL=postgresql://postgres:postgres@localhost:5432/avtoexpert
+```
+
+Затем:
+
+```bash
+cd backend
+npm run db:migrate
+npm run db:seed
+```
+
+### C.6. Полезные команды
+
+```powershell
+# Удалить все данные и пересоздать (сброс БД)
+& "C:\Program Files\PostgreSQL\16\bin\psql.exe" -U postgres -h localhost -c "DROP DATABASE IF EXISTS avtoexpert;"
+& "C:\Program Files\PostgreSQL\16\bin\psql.exe" -U postgres -h localhost -c "CREATE DATABASE avtoexpert;"
+cd backend
+npm run db:migrate
+npm run db:seed
+```

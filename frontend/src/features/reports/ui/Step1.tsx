@@ -1,14 +1,30 @@
 import { useEffect } from "react";
 import { useForm, useWatch } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { useFormStore } from "../model/useFormStore";
 import { useExperts } from "../hooks/useExperts";
 import { useValidationSync } from "../hooks/useValidationSync";
-import type { Step1Data } from "../types";
-import Alert from "@/shared/ui/Alert";
+import { step1Schema, type Step1FormData } from "@/schemas/step1.schema";
+import { AppAlert } from "@/components/ui/app-alert";
 import ExpertManagerModal from "./ExpertManagerModal";
-import Input from "@/shared/ui/Input";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from "@/components/ui/select";
+import {
+  Form,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormControl,
+  FormMessage,
+} from "@/components/ui/form";
 
-const EMPTY_STEP1: Step1Data = {
+const EMPTY_STEP1: Step1FormData = {
   expert_id: "",
   report_number: "",
   report_date: "",
@@ -23,17 +39,15 @@ function Step1({ onValidationChange }: StepFormProps) {
   const step1Data = useFormStore((s) => s.step1);
   const setStep1 = useFormStore((s) => s.setStep1);
 
-  const {
-    register,
-    setValue,
-    control,
-    formState: { isValid, touchedFields, errors },
-  } = useForm<Step1Data>({
-    mode: "onBlur",
+  const form = useForm<Step1FormData>({
+    resolver: zodResolver(step1Schema),
+    mode: "onChange",
     defaultValues: step1Data ?? EMPTY_STEP1,
   });
 
-  const watchedValues = useWatch({ control }) as Step1Data;
+  const { setValue, control, formState: { isValid } } = form;
+
+  const watchedValues = useWatch({ control }) as Step1FormData;
 
   const {
     experts,
@@ -84,106 +98,119 @@ function Step1({ onValidationChange }: StepFormProps) {
       </div>
 
       {error && (
-        <Alert type="error" message={error} onClose={() => setError(null)} />
+        <AppAlert type="error" message={error} onClose={() => setError(null)} />
       )}
 
-      <div className="space-y-6 mt-6">
-        <div>
-          <div className="flex justify-between items-center mb-2">
-            <label
-              htmlFor="expert"
-              className="block text-sm font-medium text-gray-700"
-            >
-              Эксперт <span className="text-red-500">*</span>
-            </label>
-            <button
-              type="button"
-              onClick={openExpertModal}
-              className="text-sm text-blue-600 hover:text-blue-800"
-            >
-              + Добавить эксперта
-            </button>
-          </div>
-          <select
-            id="expert"
-            disabled={isLoading}
-            className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors ${
-              touchedFields.expert_id && errors.expert_id
-                ? "border-red-300 bg-red-50"
-                : "border-gray-300"
-            } disabled:opacity-50 disabled:cursor-not-allowed`}
-            {...register("expert_id", {
-              required: "Выберите эксперта",
-            })}
-          >
-            <option value="">Выберите эксперта из списка</option>
-            {experts.map((expert) => (
-              <option key={expert.id} value={expert.id}>
-                {expert.full_name}
-              </option>
-            ))}
-          </select>
-          {touchedFields.expert_id && errors.expert_id?.message && (
-            <p className="text-red-500 text-sm mt-1">
-              {errors.expert_id.message}
-            </p>
-          )}
+      <Form {...form}>
+        <div className="space-y-6 mt-6">
+          <FormField
+            control={control}
+            name="expert_id"
+            render={({ field }) => (
+              <FormItem>
+                <div className="flex justify-between items-center">
+                  <FormLabel>
+                    Эксперт <span className="text-red-500">*</span>
+                  </FormLabel>
+                  <button
+                    type="button"
+                    onClick={openExpertModal}
+                    className="text-sm text-blue-600 hover:text-blue-800"
+                  >
+                    + Добавить эксперта
+                  </button>
+                </div>
+                <Select
+                  onValueChange={field.onChange}
+                  value={field.value}
+                  disabled={isLoading}
+                >
+                  <FormControl>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Выберите эксперта из списка" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    {experts.map((expert) => (
+                      <SelectItem key={expert.id} value={expert.id}>
+                        {expert.full_name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={control}
+            name="report_number"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>
+                  Номер заключения <span className="text-red-500">*</span>
+                </FormLabel>
+                <FormControl>
+                  <Input
+                    type="text"
+                    placeholder="Например: 2024-001"
+                    {...field}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={control}
+            name="report_date"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>
+                  Дата заключения <span className="text-red-500">*</span>
+                </FormLabel>
+                <FormControl>
+                  <Input type="date" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={control}
+            name="application_date"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>
+                  Дата подачи заявки <span className="text-red-500">*</span>
+                </FormLabel>
+                <FormControl>
+                  <Input type="date" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
         </div>
+      </Form>
 
-        <Input
-          type="text"
-          id="reportNumber"
-          label="Номер заключения"
-          error={touchedFields.report_number ? errors.report_number?.message : undefined}
-          placeholder="Например: 2024-001"
-          required
-          {...register("report_number", {
-            required: "Введите номер заключения",
-          })}
-        />
-
-        <Input
-          type="date"
-          id="reportDate"
-          label="Дата заключения"
-          error={touchedFields.report_date ? errors.report_date?.message : undefined}
-          required
-          {...register("report_date", {
-            required: "Выберите дату заключения",
-          })}
-        />
-
-        <Input
-          type="date"
-          id="applicationDate"
-          label="Дата подачи заявки"
-          error={
-            touchedFields.application_date
-              ? errors.application_date?.message
-              : undefined
-          }
-          required
-          {...register("application_date", {
-            required: "Выберите дату подачи заявки",
-          })}
-        />
-      </div>
-
-      {showExpertModal && (
-        <ExpertManagerModal
-          experts={experts}
-          newExpertName={newExpertName}
-          editingExpertId={editingExpertId}
-          expertError={expertError}
-          onNameChange={setNewExpertName}
-          onErrorClose={() => setExpertError(null)}
-          onAddExpert={handleAddExpert}
-          onUpdateExpert={handleUpdateExpert}
-          onDeleteExpert={handleDeleteExpert}
-          onEditExpert={openEditExpert}
-          onClose={closeExpertModal}
-        />
-      )}
+      <ExpertManagerModal
+        open={showExpertModal}
+        experts={experts}
+        newExpertName={newExpertName}
+        editingExpertId={editingExpertId}
+        expertError={expertError}
+        onNameChange={setNewExpertName}
+        onErrorClose={() => setExpertError(null)}
+        onAddExpert={handleAddExpert}
+        onUpdateExpert={handleUpdateExpert}
+        onDeleteExpert={handleDeleteExpert}
+        onEditExpert={openEditExpert}
+        onClose={closeExpertModal}
+      />
     </div>
   );
 }

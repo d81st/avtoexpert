@@ -1,7 +1,7 @@
 import { useAdminCreatorsQuery } from "../model/adminQueries";
 import { formatDate } from "@/shared/lib/formatters";
-import Loader from "@/shared/ui/Loader";
-import Alert from "@/shared/ui/Alert";
+import { Skeleton } from "@/components/ui/skeleton";
+import { AppAlert } from "@/components/ui/app-alert";
 
 export default function AdminCreatorsTab() {
   const creatorsQuery = useAdminCreatorsQuery();
@@ -10,12 +10,18 @@ export default function AdminCreatorsTab() {
     creatorsQuery.error instanceof Error ? creatorsQuery.error.message : null;
 
   if (creatorsQuery.isLoading) {
-    return <Loader message="Загрузка создателей..." />;
+    return (
+      <div className="space-y-3">
+        {Array.from({ length: 5 }).map((_, i) => (
+          <Skeleton key={i} className="h-12 w-full" />
+        ))}
+      </div>
+    );
   }
 
   if (error) {
     return (
-      <Alert
+      <AppAlert
         type="error"
         message={error}
         onClose={() => void creatorsQuery.refetch()}

@@ -1,5 +1,5 @@
 import React, { type ReactNode } from "react";
-import Button from "@/shared/ui/Button";
+import { Button } from "@/components/ui/button";
 
 interface ErrorBoundaryProps {
   children: ReactNode;
@@ -37,7 +37,7 @@ export default class ErrorBoundary extends React.Component<
             Произошла ошибка
           </h1>
           <p className="text-gray-600 mb-6">{this.state.error?.message}</p>
-          <Button onClick={this.handleReload} variant="primary">
+          <Button onClick={this.handleReload}>
             Перезагрузить страницу
           </Button>
         </div>

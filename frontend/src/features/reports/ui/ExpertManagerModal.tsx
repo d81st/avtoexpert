@@ -1,9 +1,29 @@
+import { useEffect } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import type { Expert } from "../types";
-import Alert from "@/shared/ui/Alert";
-import Button from "@/shared/ui/Button";
-import Input from "@/shared/ui/Input";
+import { AppAlert } from "@/components/ui/app-alert";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import {
+  Form,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormControl,
+  FormMessage,
+} from "@/components/ui/form";
+import { expertSchema, type ExpertFormData } from "@/schemas/expert.schema";
 
 interface ExpertManagerModalProps {
+  open: boolean;
   experts: Expert[];
   newExpertName: string;
   editingExpertId: string | null;
@@ -18,6 +38,7 @@ interface ExpertManagerModalProps {
 }
 
 function ExpertManagerModal({
+  open,
   experts,
   newExpertName,
   editingExpertId,
@@ -30,39 +51,75 @@ function ExpertManagerModal({
   onEditExpert,
   onClose,
 }: ExpertManagerModalProps) {
+  const form = useForm<ExpertFormData>({
+    resolver: zodResolver(expertSchema),
+    defaultValues: {
+      full_name: newExpertName,
+    },
+  });
+
+  // Sync external newExpertName with form value
+  useEffect(() => {
+    form.setValue("full_name", newExpertName);
+  }, [newExpertName, form]);
+
+  const handleSubmit = form.handleSubmit(() => {
+    if (editingExpertId) {
+      onUpdateExpert();
+    } else {
+      onAddExpert();
+    }
+  });
+
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg p-6 w-full max-w-md">
-        <h3 className="text-lg font-semibold mb-4">
-          {editingExpertId ? "Редактировать эксперта" : "Добавить эксперта"}
-        </h3>
+    <Dialog open={open} onOpenChange={(isOpen) => !isOpen && onClose()}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>
+            {editingExpertId ? "Редактировать эксперта" : "Добавить эксперта"}
+          </DialogTitle>
+        </DialogHeader>
 
         {expertError && (
-          <Alert type="error" message={expertError} onClose={onErrorClose} />
+          <AppAlert type="error" message={expertError} onClose={onErrorClose} />
         )}
 
-        <Input
-          label="Ф.И.О. эксперта"
-          value={newExpertName}
-          onChange={(event) => onNameChange(event.target.value)}
-          placeholder="Иванов И.И."
-        />
+        <Form {...form}>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <FormField
+              control={form.control}
+              name="full_name"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Ф.И.О. эксперта</FormLabel>
+                  <FormControl>
+                    <Input
+                      placeholder="Иванов И.И."
+                      {...field}
+                      onChange={(e) => {
+                        field.onChange(e);
+                        onNameChange(e.target.value);
+                      }}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
-        <div className="flex gap-2 mt-4">
-          <Button
-            variant="primary"
-            onClick={editingExpertId ? onUpdateExpert : onAddExpert}
-            fullWidth
-          >
-            {editingExpertId ? "Сохранить" : "Добавить"}
-          </Button>
-          <Button variant="secondary" onClick={onClose} fullWidth>
-            Отмена
-          </Button>
-        </div>
+            <DialogFooter>
+              <Button variant="outline" type="button" onClick={onClose}>
+                Отмена
+              </Button>
+              <Button type="submit">
+                {editingExpertId ? "Сохранить" : "Добавить"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </Form>
 
         {!editingExpertId && experts.length > 0 && (
-          <div className="mt-6 border-t pt-4">
+          <div className="border-t pt-4">
             <h4 className="text-sm font-medium text-gray-600 mb-2">
               Список экспертов:
             </h4>
@@ -94,8 +151,8 @@ function ExpertManagerModal({
             </ul>
           </div>
         )}
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }
 

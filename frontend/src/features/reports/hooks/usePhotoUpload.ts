@@ -1,8 +1,8 @@
 import { useCallback, useState } from "react";
 import type { ChangeEvent, DragEvent } from "react";
+import { useParams } from "react-router-dom";
 import { ACCEPTED_PHOTO_TYPES, MAX_PHOTOS } from "@/constants/reference";
 import { useFormStore } from "../model/useFormStore";
-import { useReportStore } from "../model/useReportStore";
 import {
   useDeletePhotoMutation,
   usePhotosQuery,
@@ -25,11 +25,9 @@ export interface UsePhotoUploadReturn {
 
 export function usePhotoUpload(): UsePhotoUploadReturn {
   const { setStep5 } = useFormStore();
-  const { currentReport } = useReportStore();
+  const { id: reportId } = useParams<{ id: string }>();
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
-
-  const reportId = currentReport?.id;
 
   // Load photos via useQuery instead of useEffect
   const photosQuery = usePhotosQuery(reportId);

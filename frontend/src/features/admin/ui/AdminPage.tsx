@@ -2,20 +2,26 @@ import { useAdmin } from "../hooks/useAdmin";
 import AdminReportsTab from "./AdminReportsTab";
 import AdminCreatorsTab from "./AdminCreatorsTab";
 import AdminTemplateTab from "./AdminTemplateTab";
-import Loader from "@/shared/ui/Loader";
-import Button from "@/shared/ui/Button";
-import AppLayout from "@/shared/ui/AppLayout";
+import { Loader2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import AppLayout from "@/app/routing/AppLayout";
+import type { AdminTab } from "../types";
 
 function AdminPage() {
   const {
     isAdmin,
-    activeTab,
     setActiveTab,
     handleGoToDashboard,
   } = useAdmin();
 
   if (!isAdmin) {
-    return <Loader message="Проверка прав доступа..." />;
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[400px]">
+        <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+        <p className="mt-4 text-gray-600">Проверка прав доступа...</p>
+      </div>
+    );
   }
 
   return (
@@ -23,47 +29,27 @@ function AdminPage() {
       title="AvtoExpert Pro — Админ"
       subtitle="Панель управления"
       headerActions={
-        <Button onClick={handleGoToDashboard} variant="secondary" size="sm">
+        <Button onClick={handleGoToDashboard} variant="outline" size="sm">
           ← К заключениям
         </Button>
       }
     >
-        <div className="surface-card mb-6 flex rounded-2xl p-2">
-          <button
-            onClick={() => setActiveTab("reports")}
-            className={`rounded-xl px-4 py-3 text-sm font-medium transition ${
-              activeTab === "reports"
-                ? "bg-blue-50 text-blue-700 shadow-sm"
-                : "text-gray-500 hover:text-gray-700"
-            }`}
-          >
-            Все заключения
-          </button>
-          <button
-            onClick={() => setActiveTab("creators")}
-            className={`rounded-xl px-4 py-3 text-sm font-medium transition ${
-              activeTab === "creators"
-                ? "bg-blue-50 text-blue-700 shadow-sm"
-                : "text-gray-500 hover:text-gray-700"
-            }`}
-          >
-            Создатели
-          </button>
-          <button
-            onClick={() => setActiveTab("template")}
-            className={`rounded-xl px-4 py-3 text-sm font-medium transition ${
-              activeTab === "template"
-                ? "bg-blue-50 text-blue-700 shadow-sm"
-                : "text-gray-500 hover:text-gray-700"
-            }`}
-          >
-            Шаблон DOCX
-          </button>
-        </div>
-
-        {activeTab === "reports" && <AdminReportsTab />}
-        {activeTab === "creators" && <AdminCreatorsTab />}
-        {activeTab === "template" && <AdminTemplateTab />}
+      <Tabs defaultValue="reports" onValueChange={(value) => setActiveTab(value as AdminTab)}>
+        <TabsList>
+          <TabsTrigger value="reports">Все заключения</TabsTrigger>
+          <TabsTrigger value="creators">Создатели</TabsTrigger>
+          <TabsTrigger value="template">Шаблон DOCX</TabsTrigger>
+        </TabsList>
+        <TabsContent value="reports">
+          <AdminReportsTab />
+        </TabsContent>
+        <TabsContent value="creators">
+          <AdminCreatorsTab />
+        </TabsContent>
+        <TabsContent value="template">
+          <AdminTemplateTab />
+        </TabsContent>
+      </Tabs>
     </AppLayout>
   );
 }

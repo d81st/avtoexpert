@@ -1,8 +1,10 @@
 import { useEffect } from 'react';
-import { useForm, useWatch, Controller } from 'react-hook-form';
+import { useForm, useWatch } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
 import { useFormStore } from '../model/useFormStore';
 import { useValidationSync } from '../hooks/useValidationSync';
 import type { Step2Data } from '../types';
+import { step2Schema, type Step2FormData } from '@/schemas/step2.schema';
 import {
   BODY_TYPES,
   CAR_MODELS,
@@ -10,9 +12,23 @@ import {
   ODOMETER_STATUSES,
   generateYearOptions,
 } from '@/constants/reference';
-import FieldLabel from '@/shared/ui/FieldLabel';
-import Input from '@/shared/ui/Input';
-import Select from '@/shared/ui/Select';
+import {
+  Form,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormControl,
+  FormMessage,
+  FormDescription,
+} from '@/components/ui/form';
+import { Input } from '@/components/ui/input';
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from '@/components/ui/select';
 
 interface StepFormProps {
   onValidationChange: (isValid: boolean) => void;
@@ -22,8 +38,9 @@ function Step2({ onValidationChange }: StepFormProps) {
   const step2Data = useFormStore((s) => s.step2);
   const setStep2 = useFormStore((s) => s.setStep2);
 
-  const { register, control, formState: { isValid, errors, touchedFields } } = useForm<Step2Data>({
-    mode: 'onBlur',
+  const form = useForm<Step2FormData>({
+    resolver: zodResolver(step2Schema),
+    mode: 'onChange',
     defaultValues: step2Data ?? {
       car_model: '',
       car_year: new Date().getFullYear(),
@@ -44,6 +61,8 @@ function Step2({ onValidationChange }: StepFormProps) {
     },
   });
 
+  const { control, formState: { isValid } } = form;
+
   // Sync form data with FormStore via useWatch
   const watchedValues = useWatch({ control });
   useEffect(() => {
@@ -58,345 +77,382 @@ function Step2({ onValidationChange }: StepFormProps) {
   const yearOptions = generateYearOptions();
 
   return (
-    <div className="space-y-8">
-      <div>
-        <h2 className="text-2xl font-bold text-gray-800">Шаг 2: Identifikatsiya</h2>
-        <p className="text-sm text-gray-600 mt-2">Идентификация автомобиля и владельца</p>
-      </div>
-
-      {/* Блок 2.1 */}
-      <section>
-        <h3 className="text-lg font-semibold text-gray-800 mb-4 pb-2 border-b">2.1 — Данные автомобиля</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div>
-            <FieldLabel ru="Модель" uz="Avtomobil modeli" required htmlFor="carModel" />
-            <input
-              id="carModel"
-              list="car-models"
-              placeholder="Chevrolet Nexia 3"
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              {...register('car_model', { required: 'Укажите модель автомобиля' })}
-            />
-            <datalist id="car-models">
-              {CAR_MODELS.map((model) => (
-                <option key={model} value={model} />
-              ))}
-            </datalist>
-            {touchedFields.car_model && errors.car_model && (
-              <p className="text-red-500 text-sm mt-1">{errors.car_model.message}</p>
-            )}
-          </div>
-
-          <div>
-            <FieldLabel ru="Год выпуска" uz="Ishlab chiqarilgan" required htmlFor="carYear" />
-            <select
-              id="carYear"
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              {...register('car_year', {
-                required: 'Выберите год выпуска',
-                valueAsNumber: true,
-              })}
-            >
-              {yearOptions.map((year) => (
-                <option key={year} value={year}>{year}</option>
-              ))}
-            </select>
-          </div>
-
-          <Controller
-            name="car_color"
-            control={control}
-            rules={{ required: 'Укажите цвет' }}
-            render={({ field, fieldState }) => (
-              <Input
-                id="carColor"
-                label="Цвет / Rangi"
-                value={field.value}
-                onChange={field.onChange}
-                onBlur={field.onBlur}
-                error={fieldState.isTouched && fieldState.error ? fieldState.error.message : undefined}
-                required
-              />
-            )}
-          />
-
-          <Controller
-            name="body_type"
-            control={control}
-            rules={{ required: 'Выберите тип кузова' }}
-            render={({ field, fieldState }) => (
-              <Select
-                id="bodyType"
-                label="Тип кузова / Kuzov turi"
-                value={field.value}
-                onChange={field.onChange}
-                onBlur={field.onBlur}
-                error={fieldState.isTouched && fieldState.error ? fieldState.error.message : undefined}
-                options={[{ value: '', label: 'Выберите...' }, ...BODY_TYPES.map((t) => ({ value: t.value, label: t.label }))]}
-                required
-              />
-            )}
-          />
-
-          <Controller
-            name="license_plate"
-            control={control}
-            rules={{ required: 'Укажите госномер' }}
-            render={({ field, fieldState }) => (
-              <Input
-                id="licensePlate"
-                label="Госномер / Davlat raqami"
-                value={field.value}
-                onChange={(e) => field.onChange(e.target.value.toUpperCase())}
-                onBlur={field.onBlur}
-                error={fieldState.isTouched && fieldState.error ? fieldState.error.message : undefined}
-                placeholder="01A123BC"
-                required
-              />
-            )}
-          />
+    <Form {...form}>
+      <div className="space-y-8">
+        <div>
+          <h2 className="text-2xl font-bold text-gray-800">Шаг 2: Identifikatsiya</h2>
+          <p className="text-sm text-gray-600 mt-2">Идентификация автомобиля и владельца</p>
         </div>
-      </section>
 
-      {/* Блок 2.2 */}
-      <section>
-        <h3 className="text-lg font-semibold text-gray-800 mb-4 pb-2 border-b">2.2 — Данные владельца</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <Controller
-            name="owner_name"
-            control={control}
-            rules={{ required: 'Укажите Ф.И.О. владельца' }}
-            render={({ field, fieldState }) => (
-              <Input
-                id="ownerName"
-                label="Ф.И.О. / F.I.O"
-                value={field.value}
-                onChange={field.onChange}
-                onBlur={field.onBlur}
-                error={fieldState.isTouched && fieldState.error ? fieldState.error.message : undefined}
-                required
-              />
-            )}
-          />
-
-          <Controller
-            name="tech_passport"
-            control={control}
-            rules={{ required: 'Укажите номер техпаспорта' }}
-            render={({ field, fieldState }) => (
-              <Input
-                id="techPassport"
-                label="Техпаспорт / Texpassport"
-                value={field.value}
-                onChange={field.onChange}
-                onBlur={field.onBlur}
-                error={fieldState.isTouched && fieldState.error ? fieldState.error.message : undefined}
-                required
-              />
-            )}
-          />
-
-          <div className="md:col-span-2">
-            <Controller
-              name="tech_passport_place"
+        {/* Блок 2.1 */}
+        <section>
+          <h3 className="text-lg font-semibold text-gray-800 mb-4 pb-2 border-b">2.1 — Данные автомобиля</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <FormField
               control={control}
+              name="car_model"
               render={({ field }) => (
-                <Input
-                  id="techPassportPlace"
-                  label="Место выдачи техпаспорта / Berilgan joy"
-                  value={field.value || ''}
-                  onChange={field.onChange}
-                  onBlur={field.onBlur}
-                  placeholder="Необязательно"
-                />
-              )}
-            />
-          </div>
-        </div>
-      </section>
-
-      {/* Блок 2.3 */}
-      <section>
-        <h3 className="text-lg font-semibold text-gray-800 mb-4 pb-2 border-b">2.3 — Технические данные</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <Controller
-            name="mileage"
-            control={control}
-            rules={{
-              required: 'Укажите показания одометра',
-              validate: (v) => (v && v > 0) || 'Укажите показания одометра',
-            }}
-            render={({ field, fieldState }) => (
-              <Input
-                type="number"
-                id="mileage"
-                label="Одометр (км) / Odometr"
-                value={field.value || ''}
-                onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
-                onBlur={field.onBlur}
-                error={fieldState.isTouched && fieldState.error ? fieldState.error.message : undefined}
-                min={0}
-                required
-              />
-            )}
-          />
-
-          <Controller
-            name="odometer_status"
-            control={control}
-            rules={{ required: 'Выберите статус одометра' }}
-            render={({ field }) => (
-              <div>
-                <FieldLabel ru="Статус одометра" uz="Odometr holati" required />
-                <div className="flex gap-4 mt-1">
-                  {ODOMETER_STATUSES.map((status) => (
-                    <label key={status.value} className="flex items-center gap-2 cursor-pointer">
-                      <input
-                        type="radio"
-                        name="odometerStatus"
-                        value={status.value}
-                        checked={field.value === status.value}
-                        onChange={() => field.onChange(status.value)}
-                        className="text-blue-600"
+                <FormItem>
+                  <FormLabel>Модель / Avtomobil modeli <span className="text-red-500">*</span></FormLabel>
+                  <FormControl>
+                    <div>
+                      <Input
+                        list="car-models"
+                        placeholder="Chevrolet Nexia 3"
+                        {...field}
                       />
-                      <span className="text-sm text-gray-700">{status.label}</span>
-                    </label>
-                  ))}
-                </div>
-              </div>
-            )}
-          />
+                      <datalist id="car-models">
+                        {CAR_MODELS.map((model) => (
+                          <option key={model} value={model} />
+                        ))}
+                      </datalist>
+                    </div>
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
-          <Controller
-            name="mileage_by_method"
-            control={control}
-            render={({ field }) => (
-              <Input
-                type="number"
-                id="mileageByMethod"
-                label="Одометр по методике / Metodika odometr"
-                value={field.value || ''}
-                onChange={(e) => field.onChange(parseInt(e.target.value) || undefined)}
-                onBlur={field.onBlur}
-                min={0}
-                helper="Расчётный пробег (необязательно)"
-              />
-            )}
-          />
-
-          <div className="md:col-span-2">
-            <Controller
-              name="vin_code"
+            <FormField
               control={control}
-              rules={{
-                required: 'Укажите VIN-код',
-                minLength: { value: 17, message: 'VIN должен содержать 17 символов' },
-                maxLength: { value: 17, message: 'VIN должен содержать 17 символов' },
-              }}
-              render={({ field, fieldState }) => (
-                <Input
-                  id="vinCode"
-                  label="VIN-код / VIN kod"
-                  value={field.value}
-                  onChange={(e) => field.onChange(e.target.value.toUpperCase().slice(0, 17))}
-                  onBlur={field.onBlur}
-                  error={fieldState.isTouched && fieldState.error ? fieldState.error.message : undefined}
-                  placeholder="WBAAA1305L1234567"
-                  maxLength={17}
-                  required
-                />
+              name="car_year"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Год выпуска / Ishlab chiqarilgan <span className="text-red-500">*</span></FormLabel>
+                  <Select
+                    onValueChange={(val) => field.onChange(Number(val))}
+                    value={String(field.value)}
+                  >
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Выберите год" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {yearOptions.map((year) => (
+                        <SelectItem key={year} value={String(year)}>{year}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={control}
+              name="car_color"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Цвет / Rangi <span className="text-red-500">*</span></FormLabel>
+                  <FormControl>
+                    <Input {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={control}
+              name="body_type"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Тип кузова / Kuzov turi <span className="text-red-500">*</span></FormLabel>
+                  <Select
+                    onValueChange={field.onChange}
+                    value={field.value}
+                  >
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Выберите..." />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {BODY_TYPES.map((t) => (
+                        <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={control}
+              name="license_plate"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Госномер / Davlat raqami <span className="text-red-500">*</span></FormLabel>
+                  <FormControl>
+                    <Input
+                      placeholder="01A123BC"
+                      {...field}
+                      onChange={(e) => field.onChange(e.target.value.toUpperCase())}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
               )}
             />
           </div>
+        </section>
 
-          <Controller
-            name="engine_number"
-            control={control}
-            render={({ field }) => (
-              <Input
-                id="engineNumber"
-                label="Номер двигателя / Dvigatel raqami"
-                value={field.value || ''}
-                onChange={field.onChange}
-                onBlur={field.onBlur}
-                placeholder="Необязательно"
+        {/* Блок 2.2 */}
+        <section>
+          <h3 className="text-lg font-semibold text-gray-800 mb-4 pb-2 border-b">2.2 — Данные владельца</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <FormField
+              control={control}
+              name="owner_name"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Ф.И.О. / F.I.O <span className="text-red-500">*</span></FormLabel>
+                  <FormControl>
+                    <Input {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={control}
+              name="tech_passport"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Техпаспорт / Texpassport <span className="text-red-500">*</span></FormLabel>
+                  <FormControl>
+                    <Input {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <div className="md:col-span-2">
+              <FormField
+                control={control}
+                name="tech_passport_place"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Место выдачи техпаспорта / Berilgan joy</FormLabel>
+                    <FormControl>
+                      <Input
+                        placeholder="Необязательно"
+                        {...field}
+                        value={field.value || ''}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
               />
-            )}
-          />
-        </div>
-      </section>
+            </div>
+          </div>
+        </section>
 
-      {/* Блок 2.4 */}
-      <section>
-        <h3 className="text-lg font-semibold text-gray-800 mb-4 pb-2 border-b">2.4 — Внешний осмотр</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <Controller
-            name="transmission_type"
-            control={control}
-            rules={{ required: 'Выберите тип трансмиссии' }}
-            render={({ field, fieldState }) => (
-              <Select
-                id="transmissionType"
-                label="Тип трансмиссии / Transmissiya turi"
-                value={field.value}
-                onChange={field.onChange}
-                onBlur={field.onBlur}
-                error={fieldState.isTouched && fieldState.error ? fieldState.error.message : undefined}
-                options={[{ value: '', label: 'Выберите...' }, ...TRANSMISSION_TYPES.map((t) => ({ value: t.value, label: t.label }))]}
-                required
-              />
-            )}
-          />
-
-          <Controller
-            name="passport_match"
-            control={control}
-            render={({ field }) => (
-              <div>
-                <FieldLabel ru="Сравнение с техпаспортом" uz="Taqqoslash" required />
-                <div className="flex gap-4 mt-1">
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="radio"
-                      name="passportMatch"
-                      checked={field.value === true}
-                      onChange={() => field.onChange(true)}
-                      className="text-blue-600"
+        {/* Блок 2.3 */}
+        <section>
+          <h3 className="text-lg font-semibold text-gray-800 mb-4 pb-2 border-b">2.3 — Технические данные</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <FormField
+              control={control}
+              name="mileage"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Одометр (км) / Odometr <span className="text-red-500">*</span></FormLabel>
+                  <FormControl>
+                    <Input
+                      type="number"
+                      min={0}
+                      {...field}
+                      value={field.value || ''}
+                      onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
                     />
-                    <span className="text-sm text-gray-700">Совпадает / Mos keladi</span>
-                  </label>
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="radio"
-                      name="passportMatch"
-                      checked={field.value === false}
-                      onChange={() => field.onChange(false)}
-                      className="text-blue-600"
-                    />
-                    <span className="text-sm text-gray-700">Не совпадает / Mos kelmaydi</span>
-                  </label>
-                </div>
-              </div>
-            )}
-          />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
-          <Controller
-            name="camera_model"
-            control={control}
-            render={({ field }) => (
-              <Input
-                id="cameraModel"
-                label="Модель камеры / Kamera modeli"
-                value={field.value || ''}
-                onChange={field.onChange}
-                onBlur={field.onBlur}
-                placeholder="Необязательно"
+            <FormField
+              control={control}
+              name="odometer_status"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Статус одометра / Odometr holati <span className="text-red-500">*</span></FormLabel>
+                  <FormControl>
+                    <div className="flex gap-4 mt-1">
+                      {ODOMETER_STATUSES.map((status) => (
+                        <label key={status.value} className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="odometerStatus"
+                            value={status.value}
+                            checked={field.value === status.value}
+                            onChange={() => field.onChange(status.value)}
+                            className="text-blue-600"
+                          />
+                          <span className="text-sm text-gray-700">{status.label}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={control}
+              name="mileage_by_method"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Одометр по методике / Metodika odometr</FormLabel>
+                  <FormControl>
+                    <Input
+                      type="number"
+                      min={0}
+                      {...field}
+                      value={field.value || ''}
+                      onChange={(e) => field.onChange(parseInt(e.target.value) || undefined)}
+                    />
+                  </FormControl>
+                  <FormDescription>Расчётный пробег (необязательно)</FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <div className="md:col-span-2">
+              <FormField
+                control={control}
+                name="vin_code"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>VIN-код / VIN kod <span className="text-red-500">*</span></FormLabel>
+                    <FormControl>
+                      <Input
+                        placeholder="WBAAA1305L1234567"
+                        maxLength={17}
+                        {...field}
+                        onChange={(e) => field.onChange(e.target.value.toUpperCase().slice(0, 17))}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
               />
-            )}
-          />
-        </div>
-      </section>
-    </div>
+            </div>
+
+            <FormField
+              control={control}
+              name="engine_number"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Номер двигателя / Dvigatel raqami</FormLabel>
+                  <FormControl>
+                    <Input
+                      placeholder="Необязательно"
+                      {...field}
+                      value={field.value || ''}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
+        </section>
+
+        {/* Блок 2.4 */}
+        <section>
+          <h3 className="text-lg font-semibold text-gray-800 mb-4 pb-2 border-b">2.4 — Внешний осмотр</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <FormField
+              control={control}
+              name="transmission_type"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Тип трансмиссии / Transmissiya turi <span className="text-red-500">*</span></FormLabel>
+                  <Select
+                    onValueChange={field.onChange}
+                    value={field.value}
+                  >
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Выберите..." />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {TRANSMISSION_TYPES.map((t) => (
+                        <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={control}
+              name="passport_match"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Сравнение с техпаспортом / Taqqoslash <span className="text-red-500">*</span></FormLabel>
+                  <FormControl>
+                    <div className="flex gap-4 mt-1">
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="radio"
+                          name="passportMatch"
+                          checked={field.value === true}
+                          onChange={() => field.onChange(true)}
+                          className="text-blue-600"
+                        />
+                        <span className="text-sm text-gray-700">Совпадает / Mos keladi</span>
+                      </label>
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="radio"
+                          name="passportMatch"
+                          checked={field.value === false}
+                          onChange={() => field.onChange(false)}
+                          className="text-blue-600"
+                        />
+                        <span className="text-sm text-gray-700">Не совпадает / Mos kelmaydi</span>
+                      </label>
+                    </div>
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={control}
+              name="camera_model"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Модель камеры / Kamera modeli</FormLabel>
+                  <FormControl>
+                    <Input
+                      placeholder="Необязательно"
+                      {...field}
+                      value={field.value || ''}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
+        </section>
+      </div>
+    </Form>
   );
 }
 

@@ -1,7 +1,7 @@
 import { lazy, Suspense } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
 import { useAuthSession } from "@/features/auth/hooks/useAuthSession";
-import Loader from "@/shared/ui/Loader";
+import { Loader2 } from "lucide-react";
 import ErrorBoundary from "@/app/errors/ErrorBoundary";
 import PrivateRoute from "./PrivateRoute";
 
@@ -11,16 +11,25 @@ const AdminPage = lazy(() => import("@/features/admin/ui/AdminPage"));
 const Login = lazy(() => import("@/features/auth/ui/Login"));
 const NotFound = lazy(() => import("./NotFound"));
 
+function PageLoader({ message }: { message: string }) {
+  return (
+    <div className="flex flex-col items-center justify-center min-h-[400px]">
+      <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+      <p className="mt-4 text-gray-600">{message}</p>
+    </div>
+  );
+}
+
 export default function AppRouter() {
   const { isAuthenticated, isInitializing } = useAuthSession();
 
   if (isInitializing) {
-    return <Loader message="Загрузка..." />;
+    return <PageLoader message="Загрузка..." />;
   }
 
   return (
     <ErrorBoundary>
-      <Suspense fallback={<Loader message="Загрузка страницы..." />}>
+      <Suspense fallback={<PageLoader message="Загрузка страницы..." />}>
         <Routes>
           <Route
             path="/login"

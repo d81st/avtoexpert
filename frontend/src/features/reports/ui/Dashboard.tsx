@@ -1,12 +1,16 @@
 import { useNavigate } from "react-router-dom";
 import { useDashboard } from "../hooks/useDashboard";
 import { formatDate, formatProgress } from "@/shared/lib/formatters";
-import StatusBadge from "@/shared/ui/StatusBadge";
-import Loader from "@/shared/ui/Loader";
-import Button from "@/shared/ui/Button";
-import Alert from "@/shared/ui/Alert";
-import Card from "@/shared/ui/Card";
-import AppLayout from "@/shared/ui/AppLayout";
+import { Badge } from "@/components/ui/badge";
+import { getStatusConfig } from "@/lib/status-variants";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
+import { Loader2 } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
+import { AppAlert } from "@/components/ui/app-alert";
+import { Card, CardContent } from "@/components/ui/card";
+import AppLayout from "@/app/routing/AppLayout";
 
 function Dashboard() {
   const navigate = useNavigate();
@@ -28,11 +32,20 @@ function Dashboard() {
   } = useDashboard();
 
   if (isLoading) {
-    return <Loader message="Загрузка отчётов..." />;
+    return (
+      <AppLayout>
+        <div className="space-y-3">
+          <Skeleton className="h-10 w-1/3" />
+          {Array.from({ length: 5 }).map((_, i) => (
+            <Skeleton key={i} className="h-12 w-full" />
+          ))}
+        </div>
+      </AppLayout>
+    );
   }
 
   if (error && reports.length === 0) {
-    return <Alert type="error" message={error} />;
+    return <AppAlert type="error" message={error} />;
   }
 
   return (
@@ -47,30 +60,31 @@ function Dashboard() {
               {pagination?.page ?? 1} из {pagination?.totalPages ?? 1}
             </p>
           </div>
-          <Button onClick={() => navigate("/report/new")} variant="primary" size="lg">
+          <Button onClick={() => navigate("/report/new")} size="lg">
             + Создать заключение
           </Button>
         </div>
 
         <form onSubmit={onSearch} className="mb-6 flex flex-col gap-2 sm:flex-row">
-          <input
+          <Input
             type="text"
             placeholder="Поиск по номеру, госномеру, владельцу..."
-            className="form-control flex-1 px-4 py-3"
+            className="flex-1"
             {...register("search")}
           />
-          <Button type="submit" variant="secondary" isLoading={reportsQuery.isFetching}>
+          <Button type="submit" variant="outline" disabled={reportsQuery.isFetching}>
+            {reportsQuery.isFetching && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Найти
           </Button>
           {searchQuery && (
-            <Button type="button" variant="secondary" onClick={handleClearSearch}>
+            <Button type="button" variant="outline" onClick={handleClearSearch}>
               Сбросить
             </Button>
           )}
         </form>
 
         {error && (
-          <Alert
+          <AppAlert
             type="error"
             message={error}
             onClose={() => {
@@ -82,90 +96,91 @@ function Dashboard() {
 
         {reports.length === 0 ? (
           <Card className="text-center">
-            <p className="text-gray-500 text-lg mb-4">
-              У вас пока нет заключений
-            </p>
-            <p className="text-gray-400 text-sm">
-              Создайте первое заключение, чтобы начать работу
-            </p>
+            <CardContent className="pt-6">
+              <p className="text-gray-500 text-lg mb-4">
+                У вас пока нет заключений
+              </p>
+              <p className="text-gray-400 text-sm">
+                Создайте первое заключение, чтобы начать работу
+              </p>
+            </CardContent>
           </Card>
         ) : (
           <>
-            <div className="data-table-wrap">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      № Заключения
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Дата
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Статус
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Прогресс
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Действия
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {reports.map((report) => (
-                    <tr key={report.id} className="hover:bg-gray-50 transition-colors">
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                        {report.report_number}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {formatDate(report.report_date)}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm">
-                        <StatusBadge status={report.status} />
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        <div className="flex items-center gap-2">
-                          <div className="w-24 bg-gray-200 rounded-full h-2">
-                            <div
-                              className="bg-blue-600 h-2 rounded-full"
-                              style={{
-                                width: `${(report.current_step / 5) * 100}%`,
-                              }}
-                            />
-                          </div>
-                          <span className="text-xs font-medium">
-                            {formatProgress(report.current_step)}
-                          </span>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>№ Заключения</TableHead>
+                  <TableHead>Дата</TableHead>
+                  <TableHead>Статус</TableHead>
+                  <TableHead>Прогресс</TableHead>
+                  <TableHead>Действия</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {reports.map((report) => (
+                  <TableRow key={report.id} className="hover:bg-blue-50/50 transition-colors duration-150">
+                    <TableCell className="font-medium">
+                      {report.report_number}
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {formatDate(report.report_date)}
+                    </TableCell>
+                    <TableCell>
+                      {(() => {
+                        const { variant, label } = getStatusConfig(report.status);
+                        return <Badge variant={variant}>{label}</Badge>;
+                      })()}
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <div className="w-24 bg-blue-100 rounded-full h-2">
+                          <div
+                            className={`h-2 rounded-full bg-gradient-to-r ${
+                              report.current_step >= 5
+                                ? "from-green-500 to-emerald-500"
+                                : "from-blue-500 to-indigo-500"
+                            }`}
+                            style={{
+                              width: `${(report.current_step / 5) * 100}%`,
+                            }}
+                          />
                         </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-3">
-                        <button
-                          onClick={() => navigate(`/report/${report.id}`)}
-                          className="text-blue-600 hover:text-blue-900 hover:underline transition-colors"
+                        <span className="text-xs font-medium">
+                          {formatProgress(report.current_step)}
+                        </span>
+                      </div>
+                    </TableCell>
+                    <TableCell className="space-x-3">
+                      <Button
+                        variant="link"
+                        size="sm"
+                        className="text-blue-600 hover:text-blue-900 p-0 h-auto"
+                        onClick={() => navigate(`/report/${report.id}`)}
+                      >
+                        Открыть
+                      </Button>
+                      {report.status === "draft" && (
+                        <Button
+                          variant="link"
+                          size="sm"
+                          className="text-red-600 hover:text-red-900 p-0 h-auto"
+                          onClick={() => handleDeleteReport(report.id)}
+                          disabled={deleteReportMutation.isPending}
                         >
-                          Открыть
-                        </button>
-                        {report.status === "draft" && (
-                          <button
-                            onClick={() => handleDeleteReport(report.id)}
-                            className="text-red-600 hover:text-red-900 hover:underline transition-colors"
-                            disabled={deleteReportMutation.isPending}
-                          >
-                            Удалить
-                          </button>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                          Удалить
+                        </Button>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
 
             {pagination && pagination.totalPages > 1 && (
               <div className="mt-4 flex justify-center gap-2">
                 <Button
-                  variant="secondary"
+                  variant="outline"
                   size="sm"
                   disabled={currentPage <= 1}
                   onClick={() => setCurrentPage((page) => page - 1)}
@@ -176,7 +191,7 @@ function Dashboard() {
                   Страница {currentPage} из {pagination.totalPages}
                 </span>
                 <Button
-                  variant="secondary"
+                  variant="outline"
                   size="sm"
                   disabled={currentPage >= pagination.totalPages}
                   onClick={() => setCurrentPage((page) => page + 1)}

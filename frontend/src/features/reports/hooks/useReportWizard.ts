@@ -43,6 +43,15 @@ export function useReportWizard({ id }: UseReportWizardParams): UseReportWizardR
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { currentStep, setCurrentStep, hydrateFromReport } = useFormStore();
+  const resetForm = useFormStore((s) => s.resetForm);
+
+  // Reset form when creating a new report (no id)
+  useEffect(() => {
+    if (!id) {
+      resetForm();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id]);
 
   // Load report data via useQuery (instead of useEffect + fetchReport)
   const reportQuery = useReportDetailQuery(id);
@@ -51,8 +60,6 @@ export function useReportWizard({ id }: UseReportWizardParams): UseReportWizardR
   useEffect(() => {
     if (reportQuery.data) {
       hydrateFromReport(reportQuery.data);
-      const step = (reportQuery.data as { current_step?: number }).current_step ?? 1;
-      setCurrentStep(Math.max(step, 1));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [reportQuery.data]);
@@ -62,8 +69,11 @@ export function useReportWizard({ id }: UseReportWizardParams): UseReportWizardR
     mutationFn: (data: Step1Data) => reportService.createReport(data),
     onSuccess: (report) => {
       void queryClient.invalidateQueries({ queryKey: reportQueryKeys.lists() });
+      // Navigate to the new report; set step=2 so the wizard advances.
+      // We set the step BEFORE navigate so the hydration effect won't reset it
+      // (it only hydrates when reportQuery.data changes for the first time).
       setCurrentStep(2);
-      navigate(`/report/${report.id}`);
+      navigate(`/report/${report.id}`, { replace: true });
     },
   });
 

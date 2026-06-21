@@ -7,8 +7,8 @@ import { useWizardStepSave } from "../hooks/useWizardStepSave";
 import { normalizeReport } from "../lib/reportMapper";
 import Wizard from "./Wizard";
 import WizardNavigation from "./WizardNavigation";
-import Loader from "@/shared/ui/Loader";
-import Alert from "@/shared/ui/Alert";
+import { Loader2 } from "lucide-react";
+import { AppAlert } from "@/components/ui/app-alert";
 import Step1 from "./Step1";
 import Step2 from "./Step2";
 import Step3 from "./Step3";
@@ -25,14 +25,14 @@ function ReportPage() {
   const wizard = useReportWizard({ id });
   const { currentStep, reportQuery, handlePrevious } = wizard;
 
-  const { handleSaveAndNext, mutationError, resetErrors } = useWizardStepSave({
+  const { handleSaveAndNext, mutationError, resetErrors, isSaving } = useWizardStepSave({
     wizard,
     isValid,
   });
 
   const currentReport = reportQuery.data ? normalizeReport(reportQuery.data) : undefined;
 
-  const { isSaving } = useReportAutosave({
+  const { isSaving: isAutosaving } = useReportAutosave({
     reportId: currentReport?.id ?? id,
     currentStep,
   });
@@ -47,11 +47,16 @@ function ReportPage() {
   });
 
   if (reportQuery.isLoading) {
-    return <Loader message="Загрузка заключения..." />;
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[400px]">
+        <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+        <p className="mt-4 text-gray-600">Загрузка заключения...</p>
+      </div>
+    );
   }
 
   if (reportQuery.isError && !reportQuery.data) {
-    return <Alert type="error" message={reportQuery.error?.message || "Ошибка загрузки заключения"} />;
+    return <AppAlert type="error" message={reportQuery.error?.message || "Ошибка загрузки заключения"} />;
   }
 
   const renderStep = () => {
@@ -103,7 +108,7 @@ function ReportPage() {
 
         {(mutationError || reportQuery.error) && (
           <div className="mb-4">
-            <Alert
+            <AppAlert
               type="error"
               message={mutationError || reportQuery.error?.message || ""}
               onClose={resetErrors}
@@ -121,11 +126,12 @@ function ReportPage() {
               canGoNext={isValid}
               canGoPrevious={currentStep > 1}
               isLastStep={false}
+              isSaving={isSaving}
             />
           )}
         </Wizard>
 
-        {isSaving && (
+        {isAutosaving && (
           <div className="fixed bottom-4 right-4 bg-blue-600 text-white px-4 py-3 rounded-lg shadow-lg flex items-center gap-2">
             <span className="animate-spin">⟳</span>
             Авто-сохранение...

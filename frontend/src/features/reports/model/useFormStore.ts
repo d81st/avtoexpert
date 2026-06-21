@@ -36,14 +36,15 @@ export const useFormStore = create<FormState>((set) => ({
   setStep5: (data) => set({ step5: data }),
   hydrateFromReport: (report) => {
     const hydrated = hydrateFormFromReport(report);
-    set({
-      currentStep: hydrated.currentStep,
+    set((state) => ({
+      // Don't reset step backward — only advance forward
+      currentStep: Math.max(state.currentStep, hydrated.currentStep),
       step1: hydrated.step1,
       step2: hydrated.step2,
       step3: hydrated.step3,
       step4: hydrated.step4,
       step5: hydrated.step5,
-    });
+    }));
   },
   resetForm: () => set({
     currentStep: 1,

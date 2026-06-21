@@ -1,4 +1,6 @@
 import { type ReactNode } from "react";
+import { Check } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 
 interface WizardProps {
   children: ReactNode;
@@ -12,17 +14,18 @@ function Wizard({ children, currentStep, totalSteps }: WizardProps) {
       <div className="surface-card mb-6 rounded-3xl p-5 md:p-6">
         <div className="mb-4 flex items-center justify-between gap-4">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-blue-600">
+            <p className="gradient-text text-xs font-semibold uppercase tracking-[0.2em]">
               Мастер заполнения
             </p>
             <p className="mt-1 text-sm text-slate-600">
               Выполнено шагов: {currentStep} из {totalSteps}
             </p>
           </div>
-          <div className="badge-soft bg-blue-50 text-blue-700">
+          <Badge variant="secondary" className="bg-blue-50 text-blue-700 border-blue-200">
             Шаг {currentStep}/{totalSteps}
-          </div>
+          </Badge>
         </div>
+        <div className="gradient-divider mt-2 mb-4" />
 
         <div className="grid grid-cols-5 gap-2 md:gap-3">
           {[...Array(totalSteps)].map((_, index) => {
@@ -38,13 +41,13 @@ function Wizard({ children, currentStep, totalSteps }: WizardProps) {
                       ? "bg-emerald-100 text-emerald-700"
                       : isActive
                         ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md"
-                        : "bg-slate-100 text-slate-500"
+                        : "bg-muted text-muted-foreground"
                   }`}
                 >
-                  {isCompleted ? "✓" : stepNumber}
+                  {isCompleted ? <Check className="h-4 w-4" /> : stepNumber}
                 </div>
                 <div
-                  className={`mt-2 text-[11px] font-medium ${isActive ? "text-blue-700" : "text-slate-500"}`}
+                  className={`mt-2 text-[11px] font-medium ${isActive ? "text-primary" : "text-muted-foreground"}`}
                 >
                   Шаг {stepNumber}
                 </div>

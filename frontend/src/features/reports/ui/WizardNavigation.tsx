@@ -1,4 +1,5 @@
-import Button from "@/shared/ui/Button";
+import { Button } from "@/components/ui/button";
+import { Loader2 } from "lucide-react";
 
 interface WizardNavigationProps {
   onNext: () => void;
@@ -6,6 +7,7 @@ interface WizardNavigationProps {
   canGoNext: boolean;
   canGoPrevious: boolean;
   isLastStep: boolean;
+  isSaving?: boolean;
 }
 
 function WizardNavigation({
@@ -14,14 +16,14 @@ function WizardNavigation({
   canGoNext,
   canGoPrevious,
   isLastStep,
+  isSaving,
 }: WizardNavigationProps) {
   return (
     <div className="mt-8 flex justify-between gap-4 border-t border-slate-200 pt-6">
       <Button
         onClick={onPrevious}
         disabled={!canGoPrevious}
-        variant="secondary"
-        size="md"
+        variant="outline"
       >
         ← Назад
       </Button>
@@ -29,20 +31,24 @@ function WizardNavigation({
       {isLastStep ? (
         <Button
           onClick={onNext}
-          disabled={!canGoNext}
+          disabled={!canGoNext || isSaving}
           variant="success"
-          size="md"
         >
           ✓ Завершить
         </Button>
       ) : (
         <Button
           onClick={onNext}
-          disabled={!canGoNext}
-          variant="primary"
-          size="md"
+          disabled={!canGoNext || isSaving}
         >
-          Далее →
+          {isSaving ? (
+            <>
+              <Loader2 className="animate-spin" />
+              Сохранение...
+            </>
+          ) : (
+            "Далее →"
+          )}
         </Button>
       )}
     </div>

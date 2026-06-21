@@ -1,5 +1,28 @@
 @import "tailwindcss";
 
+@theme {
+  --color-background: hsl(0 0% 100%);
+  --color-foreground: hsl(222.2 84% 4.9%);
+  --color-card: hsl(0 0% 100%);
+  --color-card-foreground: hsl(222.2 84% 4.9%);
+  --color-popover: hsl(0 0% 100%);
+  --color-popover-foreground: hsl(222.2 84% 4.9%);
+  --color-primary: hsl(221.2 83.2% 53.3%);
+  --color-primary-foreground: hsl(210 40% 98%);
+  --color-secondary: hsl(210 40% 96.1%);
+  --color-secondary-foreground: hsl(222.2 47.4% 11.2%);
+  --color-muted: hsl(210 40% 96.1%);
+  --color-muted-foreground: hsl(215.4 16.3% 46.9%);
+  --color-accent: hsl(210 40% 96.1%);
+  --color-accent-foreground: hsl(222.2 47.4% 11.2%);
+  --color-destructive: hsl(0 84.2% 60.2%);
+  --color-destructive-foreground: hsl(210 40% 98%);
+  --color-border: hsl(214.3 31.8% 91.4%);
+  --color-input: hsl(214.3 31.8% 91.4%);
+  --color-ring: hsl(221.2 83.2% 53.3%);
+  --radius: 0.5rem;
+}
+
 :root {
   color-scheme: light;
   --page-bg: #f4f7fb;
@@ -11,6 +34,35 @@
   --text-soft: #475569;
   --shadow-soft: 0 12px 32px rgba(15, 23, 42, 0.08);
   --shadow-card: 0 18px 48px rgba(15, 23, 42, 0.1);
+
+  /* Gradient theme variables */
+  --gradient-primary: linear-gradient(to right, #3b82f6, #4f46e5);
+  --gradient-success: linear-gradient(to right, #22c55e, #059669);
+  --gradient-danger: linear-gradient(to right, #ef4444, #e11d48);
+  --accent-primary: #4f46e5;
+  --accent-primary-hover: #4338ca;
+
+  /* shadcn/ui theme tokens */
+  --background: 0 0% 100%;
+  --foreground: 222.2 84% 4.9%;
+  --card: 0 0% 100%;
+  --card-foreground: 222.2 84% 4.9%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 222.2 84% 4.9%;
+  --primary: 221.2 83.2% 53.3%;
+  --primary-foreground: 210 40% 98%;
+  --secondary: 210 40% 96.1%;
+  --secondary-foreground: 222.2 47.4% 11.2%;
+  --muted: 210 40% 96.1%;
+  --muted-foreground: 215.4 16.3% 46.9%;
+  --accent: 210 40% 96.1%;
+  --accent-foreground: 222.2 47.4% 11.2%;
+  --destructive: 0 84.2% 60.2%;
+  --destructive-foreground: 210 40% 98%;
+  --border: 214.3 31.8% 91.4%;
+  --input: 214.3 31.8% 91.4%;
+  --ring: 221.2 83.2% 53.3%;
+  --radius: 0.5rem;
 }
 
 html {
@@ -75,8 +127,19 @@ textarea {
 .app-header {
   backdrop-filter: blur(14px);
   background: rgba(255, 255, 255, 0.8);
-  border-bottom: 1px solid var(--surface-border);
+  border-bottom: none;
   box-shadow: 0 8px 24px rgba(15, 23, 42, 0.04);
+  position: relative;
+}
+
+.app-header::after {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(to right, #3b82f6, #6366f1, #8b5cf6);
 }
 
 .surface-card {
@@ -94,6 +157,10 @@ textarea {
 
 .brand-title {
   letter-spacing: -0.025em;
+  background: linear-gradient(to right, #2563eb, #4f46e5);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }
 
 .page-subtitle {
@@ -171,4 +238,32 @@ textarea {
   border-radius: 999px;
   font-size: 0.75rem;
   font-weight: 600;
+}
+
+.card-gradient-top {
+  position: relative;
+  overflow: hidden;
+}
+
+.card-gradient-top::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(to right, #3b82f6, #6366f1);
+}
+
+.gradient-text {
+  background: linear-gradient(to right, #3b82f6, #4f46e5);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.gradient-divider {
+  height: 2px;
+  background: linear-gradient(to right, #3b82f6, #6366f1, transparent);
+  border: none;
 }

@@ -1,14 +1,24 @@
 import { useEffect } from "react";
-import { useForm, useWatch } from "react-hook-form";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { MAX_PHOTOS } from "@/constants/reference";
 import { formatSum } from "@/shared/lib/formatters";
+import { step5Schema, type Step5FormData } from "@/schemas/step5.schema";
+import { useDebouncedStoreSync } from "../hooks/useDebouncedStoreSync";
 import { usePhotoUpload } from "../hooks/usePhotoUpload";
 import { useValidationSync } from "../hooks/useValidationSync";
 import { useFormStore } from "../model/useFormStore";
 import { calcGrandTotal } from "../lib/calculations";
-import type { Step5Data } from "../types";
-import Alert from "@/shared/ui/Alert";
-import Button from "@/shared/ui/Button";
+import { AppAlert } from "@/components/ui/app-alert";
+import { Button } from "@/components/ui/button";
+import {
+  Form,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormControl,
+  FormMessage,
+} from "@/components/ui/form";
 
 interface Step5Props {
   onValidationChange: (isValid: boolean) => void;
@@ -42,25 +52,21 @@ function Step5({
     removePhoto,
   } = usePhotoUpload();
 
-  // useForm for pattern consistency with other steps
-  // Step5 doesn't have traditional text fields — photos are managed by usePhotoUpload
-  const { control, setValue } = useForm<Step5Data>({
-    mode: "onBlur",
+  const form = useForm<Step5FormData>({
+    resolver: zodResolver(step5Schema),
+    mode: "onChange",
     defaultValues: step5Data ?? { photos: [] },
   });
+
+  const { control, setValue } = form;
 
   // Sync photos from usePhotoUpload into react-hook-form
   useEffect(() => {
     setValue("photos", photos);
   }, [photos, setValue]);
 
-  // Sync form data with FormStore via useWatch
-  const watchedValues = useWatch({ control });
-  useEffect(() => {
-    if (watchedValues && watchedValues.photos && watchedValues.photos.length > 0) {
-      setStep5(watchedValues as Step5Data);
-    }
-  }, [watchedValues, photos, setStep5]);
+  // Debounced sync form data with FormStore
+  useDebouncedStoreSync(control, setStep5, 300);
 
   // Step5 is always valid (photos are optional) — notify parent via validation sync hook
   useValidationSync(true, onValidationChange);
@@ -85,75 +91,89 @@ function Step5({
         </p>
       </div>
 
-      <section>
-        <h3 className="text-lg font-semibold text-gray-800 mb-4">
-          5.1 - Фотографии / Rasmlar
-        </h3>
+      <Form {...form}>
+        <section>
+          <h3 className="text-lg font-semibold text-gray-800 mb-4">
+            5.1 - Фотографии / Rasmlar
+          </h3>
 
-        <div
-          onDragOver={handleDragOver}
-          onDragLeave={handleDragLeave}
-          onDrop={handleDrop}
-          className={`border-2 border-dashed rounded-lg p-8 text-center transition-all ${
-            isDragging ? "border-blue-500 bg-blue-50" : "border-gray-300 hover:border-blue-400 hover:bg-gray-50"
-          }`}
-        >
-          <input
-            type="file"
-            multiple
-            accept="image/jpeg,image/png,image/heic,image/heif,.jpg,.jpeg,.png,.heic,.heif"
-            onChange={handleFileInput}
-            className="hidden"
-            id="photo-upload"
-            disabled={uploading || photos.length >= MAX_PHOTOS}
+          <FormField
+            control={control}
+            name="photos"
+            render={() => (
+              <FormItem>
+                <FormLabel>Фотографии повреждений</FormLabel>
+                <FormControl>
+                  <div
+                    onDragOver={handleDragOver}
+                    onDragLeave={handleDragLeave}
+                    onDrop={handleDrop}
+                    className={`border-2 border-dashed rounded-lg p-8 text-center transition-all ${
+                      isDragging ? "border-blue-500 bg-blue-50" : "border-gray-300 hover:border-blue-400 hover:bg-gray-50"
+                    }`}
+                  >
+                    <input
+                      type="file"
+                      multiple
+                      accept="image/jpeg,image/png,image/heic,image/heif,.jpg,.jpeg,.png,.heic,.heif"
+                      onChange={handleFileInput}
+                      className="hidden"
+                      id="photo-upload"
+                      disabled={uploading || photos.length >= MAX_PHOTOS}
+                    />
+                    <label
+                      htmlFor="photo-upload"
+                      className={`cursor-pointer block ${uploading || photos.length >= MAX_PHOTOS ? "opacity-50 cursor-not-allowed" : ""}`}
+                    >
+                      <div className="text-4xl mb-3">Фото</div>
+                      <p className="text-gray-700 font-medium">
+                        {uploading
+                          ? "Загрузка..."
+                          : "Перетащите файлы или нажмите для выбора"}
+                      </p>
+                      <p className="text-xs text-gray-500 mt-2">
+                        JPG, PNG, HEIC - до {MAX_PHOTOS} фото
+                      </p>
+                      <p className="text-sm font-medium text-blue-600 mt-3">
+                        Загружено: {photos.length} из {MAX_PHOTOS}
+                      </p>
+                    </label>
+                  </div>
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
           />
-          <label
-            htmlFor="photo-upload"
-            className={`cursor-pointer block ${uploading || photos.length >= MAX_PHOTOS ? "opacity-50 cursor-not-allowed" : ""}`}
-          >
-            <div className="text-4xl mb-3">Фото</div>
-            <p className="text-gray-700 font-medium">
-              {uploading
-                ? "Загрузка..."
-                : "Перетащите файлы или нажмите для выбора"}
-            </p>
-            <p className="text-xs text-gray-500 mt-2">
-              JPG, PNG, HEIC - до {MAX_PHOTOS} фото
-            </p>
-            <p className="text-sm font-medium text-blue-600 mt-3">
-              Загружено: {photos.length} из {MAX_PHOTOS}
-            </p>
-          </label>
-        </div>
 
-        {uploadError && <Alert type="error" message={uploadError} onClose={() => setUploadError(null)} />}
+          {uploadError && <AppAlert type="error" message={uploadError} onClose={() => setUploadError(null)} />}
 
-        {photos.length > 0 && (
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
-            {photos.map((photo, index) => (
-              <div key={photo.id} className="relative group">
-                <img
-                  src={photo.url}
-                  alt={`Фото ${index + 1}`}
-                  className="w-full h-36 object-cover rounded-lg border-2 border-gray-200"
-                />
-                <button
-                  type="button"
-                  onClick={() => {
-                    void removePhoto(photo);
-                  }}
-                  className="absolute top-2 right-2 bg-red-600 text-white rounded-full w-7 h-7 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                >
-                  x
-                </button>
-                <span className="absolute bottom-1 left-1 bg-black/60 text-white text-xs px-2 py-0.5 rounded">
-                  {index + 1}
-                </span>
-              </div>
-            ))}
-          </div>
-        )}
-      </section>
+          {photos.length > 0 && (
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
+              {photos.map((photo, index) => (
+                <div key={photo.id} className="relative group">
+                  <img
+                    src={photo.url}
+                    alt={`Фото ${index + 1}`}
+                    className="w-full h-36 object-cover rounded-lg border-2 border-gray-200"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      void removePhoto(photo);
+                    }}
+                    className="absolute top-2 right-2 bg-red-600 text-white rounded-full w-7 h-7 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                  >
+                    x
+                  </button>
+                  <span className="absolute bottom-1 left-1 bg-black/60 text-white text-xs px-2 py-0.5 rounded">
+                    {index + 1}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+      </Form>
 
       <section>
         <h3 className="text-lg font-semibold text-gray-800 mb-4">
@@ -161,7 +181,7 @@ function Step5({
         </h3>
 
         {!step4 ? (
-          <Alert type="info" message="Заполните шаг 4 для просмотра итогов" />
+          <AppAlert type="info" message="Заполните шаг 4 для просмотра итогов" />
         ) : (
           <div className="space-y-3">
             <div className="flex justify-between p-3 bg-gray-50 rounded">
@@ -195,24 +215,26 @@ function Step5({
           5.3 - Генерация документа
         </h3>
 
-        {generateError && <Alert type="error" message={generateError} />}
+        {generateError && <AppAlert type="error" message={generateError} />}
 
         {generateSuccess && (
-          <Alert type="success" message="Документ успешно сгенерирован и скачан!" />
+          <AppAlert type="success" message="Документ успешно сгенерирован и скачан!" />
         )}
 
         <Button
           onClick={onFinalize}
-          disabled={isGenerating || !step4}
+          disabled={isGenerating || !step4 || photos.length === 0}
           variant="success"
           size="lg"
-          fullWidth
+          className="w-full"
         >
           {isGenerating
             ? "Генерация..."
             : generateSuccess
               ? "Готово!"
-              : "Скачать заключение .docx"}
+              : photos.length === 0
+                ? "Загрузите хотя бы 1 фото"
+                : "Скачать заключение .docx"}
         </Button>
       </section>
     </div>
