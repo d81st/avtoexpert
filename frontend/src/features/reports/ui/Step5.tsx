@@ -9,7 +9,9 @@ import { usePhotoUpload } from "../hooks/usePhotoUpload";
 import { useValidationSync } from "../hooks/useValidationSync";
 import { useFormStore } from "../model/useFormStore";
 import { calcGrandTotal } from "../lib/calculations";
+import type { CooldownReason } from "../hooks/useReportFinalize";
 import { AppAlert } from "@/components/ui/app-alert";
+import { notify } from "@/shared/notifications/notify";
 import { Button } from "@/components/ui/button";
 import {
   Form,
@@ -26,6 +28,8 @@ interface Step5Props {
   isGenerating: boolean;
   generateError: string | null;
   generateSuccess: boolean;
+  cooldownReason: CooldownReason;
+  cooldownSecondsLeft: number;
 }
 
 function Step5({
@@ -34,6 +38,8 @@ function Step5({
   isGenerating,
   generateError,
   generateSuccess,
+  cooldownReason,
+  cooldownSecondsLeft,
 }: Step5Props) {
   const step5Data = useFormStore((s) => s.step5);
   const setStep5 = useFormStore((s) => s.setStep5);
@@ -64,6 +70,33 @@ function Step5({
   useEffect(() => {
     setValue("photos", photos);
   }, [photos, setValue]);
+
+  // AC 5.4 — transient upload error отображается toast'ом через
+  // Notification_System, а не inline AppAlert. После показа сразу сбрасываем
+  // локальное состояние из usePhotoUpload, чтобы повторное появление того же
+  // текста снова срабатывало (effect зависит от перехода `uploadError → truthy`).
+  useEffect(() => {
+    if (!uploadError) return;
+    notify.error(uploadError);
+    setUploadError(null);
+  }, [uploadError, setUploadError]);
+
+  // AC 5.4 — transient generate error → toast. Состояние `generateError`
+  // принадлежит `useReportFinalize` и сбрасывается на каждом следующем вызове
+  // `handleFinalize` (см. setGenerateError(null) в начале finalize-цикла),
+  // что обеспечивает идемпотентность: ровно один toast на одну попытку.
+  useEffect(() => {
+    if (!generateError) return;
+    notify.error(generateError);
+  }, [generateError]);
+
+  // AC 5.3 — transient generate success → toast. `generateSuccess` устанавливается
+  // ровно один раз за успешный finalize-цикл и сбрасывается в `false` на следующей
+  // попытке внутри `useReportFinalize`, что обеспечивает идемпотентность.
+  useEffect(() => {
+    if (!generateSuccess) return;
+    notify.success("Документ успешно сгенерирован и скачан!");
+  }, [generateSuccess]);
 
   // Debounced sync form data with FormStore
   useDebouncedStoreSync(control, setStep5, 300);
@@ -145,8 +178,6 @@ function Step5({
             )}
           />
 
-          {uploadError && <AppAlert type="error" message={uploadError} onClose={() => setUploadError(null)} />}
-
           {photos.length > 0 && (
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
               {photos.map((photo, index) => (
@@ -215,26 +246,27 @@ function Step5({
           5.3 - Генерация документа
         </h3>
 
-        {generateError && <AppAlert type="error" message={generateError} />}
-
-        {generateSuccess && (
-          <AppAlert type="success" message="Документ успешно сгенерирован и скачан!" />
-        )}
-
         <Button
           onClick={onFinalize}
-          disabled={isGenerating || !step4 || photos.length === 0}
+          disabled={
+            isGenerating ||
+            cooldownSecondsLeft > 0 ||
+            !step4 ||
+            photos.length === 0
+          }
           variant="success"
           size="lg"
           className="w-full"
         >
-          {isGenerating
-            ? "Генерация..."
-            : generateSuccess
-              ? "Готово!"
-              : photos.length === 0
-                ? "Загрузите хотя бы 1 фото"
-                : "Скачать заключение .docx"}
+          {cooldownReason === "rate-limit"
+            ? `Подождите ${cooldownSecondsLeft} с`
+            : isGenerating
+              ? "Генерация..."
+              : generateSuccess
+                ? "Готово!"
+                : photos.length === 0
+                  ? "Загрузите хотя бы 1 фото"
+                  : "Скачать заключение .docx"}
         </Button>
       </section>
     </div>

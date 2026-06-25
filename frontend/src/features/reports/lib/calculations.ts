@@ -17,8 +17,15 @@ export function calcAverageAnalogPrice(prices: number[]): number | null {
   return Math.round(valid.reduce((sum, p) => sum + p, 0) / 3);
 }
 
-export function calcMarketPrice(averagePrice: number, depreciationPct: number): number {
-  return Math.round(averagePrice * (1 - depreciationPct / 100));
+const DEFAULT_DEPRECIATION_PCT = 90;
+
+export function calcMarketPrice(
+  averagePrice: number,
+  depreciationPct: number | null | undefined,
+): number {
+  const coerced = Number(depreciationPct);
+  const pct = Number.isFinite(coerced) ? coerced : DEFAULT_DEPRECIATION_PCT;
+  return Math.round(averagePrice * (1 - pct / 100));
 }
 
 export function calcRepairWorksTotal(repairWorks: RepairWork[]): number {

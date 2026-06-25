@@ -1,0 +1,2 @@
+# Treat docx files as binary to prevent corruption
+*.docx binary

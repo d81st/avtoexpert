@@ -25,7 +25,12 @@ function ReportPage() {
   const wizard = useReportWizard({ id });
   const { currentStep, reportQuery, handlePrevious } = wizard;
 
-  const { handleSaveAndNext, mutationError, resetErrors, isSaving } = useWizardStepSave({
+  // mutationError / resetErrors не используются: ошибки шаговых мутаций
+  // отображаются глобальным toast'ом через axios-interceptor (AC 5.4, 5.12).
+  // Inline `<AppAlert>` для transient-ошибки убран — он дублировал toast
+  // и сдвигал layout. Persistent early-return AppAlert для случая "отчёт
+  // не найден" сохранён ниже (AC 5.11). См. design.md §8.5.
+  const { handleSaveAndNext, isSaving } = useWizardStepSave({
     wizard,
     isValid,
   });
@@ -41,6 +46,8 @@ function ReportPage() {
     isGenerating,
     generateError,
     generateSuccess,
+    cooldownReason,
+    cooldownSecondsLeft,
     handleFinalize,
   } = useReportFinalize({
     reportId: currentReport?.id ?? id,
@@ -77,6 +84,8 @@ function ReportPage() {
             isGenerating={isGenerating}
             generateError={generateError}
             generateSuccess={generateSuccess}
+            cooldownReason={cooldownReason}
+            cooldownSecondsLeft={cooldownSecondsLeft}
           />
         );
       default:
@@ -106,15 +115,15 @@ function ReportPage() {
           </button>
         </div>
 
-        {(mutationError || reportQuery.error) && (
-          <div className="mb-4">
-            <AppAlert
-              type="error"
-              message={mutationError || reportQuery.error?.message || ""}
-              onClose={resetErrors}
-            />
-          </div>
-        )}
+        {/*
+          Transient ошибки шаговых мутаций и фоновых ошибок reportQuery
+          раньше рендерились здесь inline `<AppAlert>`. Теперь они приходят
+          глобальным toast'ом через axios-interceptor (AC 5.4, 5.12) — это
+          избавляет от двойного уведомления и сдвига layout.
+
+          Persistent inline `<AppAlert>` для случая "отчёт не найден"
+          остаётся выше в early-return (AC 5.11).
+        */}
 
         <Wizard currentStep={currentStep} totalSteps={TOTAL_STEPS}>
           <div className="mb-6">{renderStep()}</div>

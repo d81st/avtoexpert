@@ -5,7 +5,7 @@ import { useFormStore } from "../model/useFormStore";
 import { useExperts } from "../hooks/useExperts";
 import { useValidationSync } from "../hooks/useValidationSync";
 import { step1Schema, type Step1FormData } from "@/schemas/step1.schema";
-import { AppAlert } from "@/components/ui/app-alert";
+import { notify } from "@/shared/notifications/notify";
 import ExpertManagerModal from "./ExpertManagerModal";
 import { Input } from "@/components/ui/input";
 import {
@@ -86,6 +86,16 @@ function Step1({ onValidationChange }: StepFormProps) {
   // Sync validation state via formState.isValid subscription
   useValidationSync(isValid, onValidationChange);
 
+  // AC 5.4 — transient error (загрузка списка экспертов) отображается toast'ом
+  // через Notification_System, а не inline AppAlert. После показа сразу
+  // очищаем локальное состояние, чтобы повторное появление того же значения
+  // снова срабатывало (effect зависит от изменения `error`).
+  useEffect(() => {
+    if (!error) return;
+    notify.error(error);
+    setError(null);
+  }, [error, setError]);
+
   return (
     <div>
       <div className="mb-6">
@@ -96,10 +106,6 @@ function Step1({ onValidationChange }: StepFormProps) {
           Укажите основные данные для заключения об экспертизе
         </p>
       </div>
-
-      {error && (
-        <AppAlert type="error" message={error} onClose={() => setError(null)} />
-      )}
 
       <Form {...form}>
         <div className="space-y-6 mt-6">

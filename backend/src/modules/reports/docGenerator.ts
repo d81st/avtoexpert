@@ -143,6 +143,20 @@ async function getTemplate(): Promise<Buffer> {
   if (!templateCache) {
     const templatePath = path.join(env.TEMPLATE_DIR, 'expertise.docx');
     templateCache = await fs.readFile(templatePath);
+
+    // Validate ZIP signature (PK\x03\x04)
+    if (
+      templateCache.length < 4 ||
+      templateCache[0] !== 0x50 ||
+      templateCache[1] !== 0x4b ||
+      templateCache[2] !== 0x03 ||
+      templateCache[3] !== 0x04
+    ) {
+      templateCache = null;
+      throw new Error(
+        `Template file is not a valid DOCX/ZIP: ${templatePath}`,
+      );
+    }
   }
   return templateCache;
 }

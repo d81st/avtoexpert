@@ -1,4 +1,11 @@
+import { useRef } from "react";
 import { useFormStore } from "../model/useFormStore";
+import type {
+  Step2Data,
+  Step3Data,
+  Step4Data,
+  Step5Data,
+} from "../types";
 import type { UseReportWizardReturn } from "./useReportWizard";
 
 interface UseWizardStepSaveParams {
@@ -13,6 +20,50 @@ interface UseWizardStepSaveReturn {
   isSaving: boolean;
 }
 
+interface LastSavedSnapshots {
+  step2?: Step2Data;
+  step3?: Step3Data;
+  step4?: Step4Data;
+  step5?: Step5Data;
+}
+
+/**
+ * Локальный deep-equal сравниватель для JSON-подобных значений шагов формы.
+ *
+ * Поддерживает примитивы, массивы и обычные объекты — этого достаточно для
+ * сравнения `step2/step3/step4/step5` (в формах нет Date/Map/Set/RegExp).
+ * Не вводит новых рантайм-зависимостей (Requirements 5.9 / 7.9).
+ */
+function deepEqual(a: unknown, b: unknown): boolean {
+  if (a === b) return true;
+  if (a === null || b === null || a === undefined || b === undefined) {
+    return false;
+  }
+  if (typeof a !== typeof b) return false;
+  if (typeof a !== "object") {
+    // Покрывает NaN === NaN; остальные примитивы уже отсечены `a === b`.
+    return Number.isNaN(a as number) && Number.isNaN(b as number);
+  }
+  if (Array.isArray(a) || Array.isArray(b)) {
+    if (!Array.isArray(a) || !Array.isArray(b)) return false;
+    if (a.length !== b.length) return false;
+    for (let i = 0; i < a.length; i++) {
+      if (!deepEqual(a[i], b[i])) return false;
+    }
+    return true;
+  }
+  const aObj = a as Record<string, unknown>;
+  const bObj = b as Record<string, unknown>;
+  const aKeys = Object.keys(aObj);
+  const bKeys = Object.keys(bObj);
+  if (aKeys.length !== bKeys.length) return false;
+  for (const key of aKeys) {
+    if (!Object.prototype.hasOwnProperty.call(bObj, key)) return false;
+    if (!deepEqual(aObj[key], bObj[key])) return false;
+  }
+  return true;
+}
+
 export function useWizardStepSave({
   wizard,
   isValid,
@@ -22,6 +73,11 @@ export function useWizardStepSave({
   const step3 = useFormStore((s) => s.step3);
   const step4 = useFormStore((s) => s.step4);
   const step5 = useFormStore((s) => s.step5);
+
+  // Снапшоты последних успешно отправленных значений шагов.
+  // При первом переходе snapshot отсутствует (undefined) → deepEqual возвращает
+  // `false` и мутация выполняется — текущее поведение сохраняется (Requirement 7.5).
+  const lastSavedRef = useRef<LastSavedSnapshots>({});
 
   const {
     currentStep,
@@ -67,28 +123,63 @@ export function useWizardStepSave({
     switch (currentStep) {
       case 2:
         if (step2) {
-          saveStep2Mutation.mutate(step2, { onSuccess: () => handleNext() });
+          if (deepEqual(step2, lastSavedRef.current.step2)) {
+            handleNext();
+          } else {
+            saveStep2Mutation.mutate(step2, {
+              onSuccess: () => {
+                lastSavedRef.current.step2 = step2;
+                handleNext();
+              },
+            });
+          }
         } else {
           handleNext();
         }
         break;
       case 3:
         if (step3) {
-          saveStep3Mutation.mutate(step3, { onSuccess: () => handleNext() });
+          if (deepEqual(step3, lastSavedRef.current.step3)) {
+            handleNext();
+          } else {
+            saveStep3Mutation.mutate(step3, {
+              onSuccess: () => {
+                lastSavedRef.current.step3 = step3;
+                handleNext();
+              },
+            });
+          }
         } else {
           handleNext();
         }
         break;
       case 4:
         if (step4) {
-          saveStep4Mutation.mutate(step4, { onSuccess: () => handleNext() });
+          if (deepEqual(step4, lastSavedRef.current.step4)) {
+            handleNext();
+          } else {
+            saveStep4Mutation.mutate(step4, {
+              onSuccess: () => {
+                lastSavedRef.current.step4 = step4;
+                handleNext();
+              },
+            });
+          }
         } else {
           handleNext();
         }
         break;
       case 5:
         if (step5) {
-          saveStep5Mutation.mutate(step5);
+          if (deepEqual(step5, lastSavedRef.current.step5)) {
+            // На шаге 5 навигации `handleNext` нет — просто выходим без мутации.
+            return;
+          }
+          saveStep5Mutation.mutate(step5, {
+            onSuccess: () => {
+              lastSavedRef.current.step5 = step5;
+            },
+          });
         }
         break;
     }

@@ -16,7 +16,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Loader2 } from "lucide-react";
-import { AppAlert } from "@/components/ui/app-alert";
+import { notify } from "@/shared/notifications/notify";
 
 function Login() {
   const navigate = useNavigate();
@@ -32,16 +32,26 @@ function Login() {
     },
   });
 
-  const onSubmit = form.handleSubmit(async (payload) => {
-    const response = await loginMutation.mutateAsync(payload);
-    setAuth(response.token, response.creator);
-    navigate("/");
+  const onSubmit = form.handleSubmit((payload) => {
+    // AC 5.12 — silent: true подавляет автоматический error-toast от axios
+    // interceptor'а, чтобы не дублировать toast, выпускаемый из onError ниже.
+    loginMutation.mutate(
+      { ...payload, config: { silent: true } },
+      {
+        onSuccess: (response) => {
+          setAuth(response.token, response.creator);
+          navigate("/");
+        },
+        onError: (err) => {
+          // AC 5.4 — transient ошибка авторизации показывается через
+          // Notification_System (Sonner toast), а не inline AppAlert.
+          const errorMessage =
+            err instanceof Error ? err.message : "Неверный логин или пароль";
+          notify.error(errorMessage);
+        },
+      },
+    );
   });
-
-  const errorMessage =
-    loginMutation.error instanceof Error
-      ? loginMutation.error.message
-      : "Неверный логин или пароль";
 
   return (
     <div className="app-shell flex min-h-screen items-center justify-center p-4">
@@ -58,14 +68,6 @@ function Login() {
               Система экспертизы автомобилей
             </p>
           </div>
-
-          {loginMutation.isError && (
-            <AppAlert
-              type="error"
-              message={errorMessage}
-              onClose={() => loginMutation.reset()}
-            />
-          )}
 
           <Form {...form}>
             <form onSubmit={onSubmit} className="mt-6 space-y-4">

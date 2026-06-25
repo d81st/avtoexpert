@@ -26,6 +26,7 @@ export interface ReportsQueryParams {
 export const reportService = {
   async getReports(
     params?: ReportsQueryParams,
+    config?: { background?: boolean; silent?: boolean },
   ): Promise<PaginatedResponse<Report>> {
     const searchParams = new URLSearchParams();
 
@@ -36,8 +37,9 @@ export const reportService = {
 
     const queryString = searchParams.toString();
     const url = queryString ? `/reports?${queryString}` : "/reports";
-    const response =
-      await apiClient.get<PaginatedResponse<Record<string, unknown>>>(url);
+    const response = await apiClient.get<
+      PaginatedResponse<Record<string, unknown>>
+    >(url, config);
 
     return {
       data: response.data.data.map(normalizeReport),
@@ -81,15 +83,17 @@ export const reportService = {
 
   async autosave(
     id: string,
-    data: {
+    payload: {
       step2?: Step2Data | null;
       step3?: Step3Data | null;
       step4?: Step4Data | null;
     },
+    config?: { background?: boolean; silent?: boolean },
   ): Promise<{ saved_at: string }> {
     const response = await apiClient.patch<{ saved_at: string }>(
       `/reports/${id}/autosave`,
-      toApiAutosave(data),
+      toApiAutosave(payload),
+      config,
     );
 
     return response.data;

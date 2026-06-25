@@ -97,6 +97,19 @@ textarea {
   font: inherit;
 }
 
+/* Global cursor rules (Requirement 3.4): ensures all native buttons / role="button"
+   / anchor links get a consistent pointer cursor, even when not using <UIButton>. */
+button:not(:disabled),
+[role="button"]:not(:disabled),
+a[href] {
+  cursor: pointer;
+}
+
+button:disabled,
+[role="button"][aria-disabled="true"] {
+  cursor: not-allowed;
+}
+
 #root {
   min-height: 100vh;
 }
@@ -266,4 +279,17 @@ textarea {
   height: 2px;
   background: linear-gradient(to right, #3b82f6, #6366f1, transparent);
   border: none;
+}
+
+/* AC 5.14 — Sonner Toaster responsive position.
+   Desktop (>=640px) — bottom-right is set via Toaster props in components/ui/sonner.tsx.
+   Mobile (<640px) — overrides to top-center for thumb-zone friendliness. */
+@media (max-width: 639px) {
+  :where([data-sonner-toaster]) {
+    top: 0 !important;
+    bottom: auto !important;
+    left: 50% !important;
+    right: auto !important;
+    transform: translateX(-50%) !important;
+  }
 }

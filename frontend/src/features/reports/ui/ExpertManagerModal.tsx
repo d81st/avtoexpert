@@ -2,9 +2,9 @@ import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import type { Expert } from "../types";
-import { AppAlert } from "@/components/ui/app-alert";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { notify } from "@/shared/notifications/notify";
 import {
   Dialog,
   DialogContent,
@@ -63,6 +63,16 @@ function ExpertManagerModal({
     form.setValue("full_name", newExpertName);
   }, [newExpertName, form]);
 
+  // AC 5.4 — transient expert error отображается toast'ом через
+  // Notification_System, а не inline AppAlert. После показа сразу очищаем
+  // состояние в родителе, чтобы повторное появление того же значения
+  // снова срабатывало (effect зависит от изменения `expertError`).
+  useEffect(() => {
+    if (!expertError) return;
+    notify.error(expertError);
+    onErrorClose();
+  }, [expertError, onErrorClose]);
+
   const handleSubmit = form.handleSubmit(() => {
     if (editingExpertId) {
       onUpdateExpert();
@@ -79,10 +89,6 @@ function ExpertManagerModal({
             {editingExpertId ? "Редактировать эксперта" : "Добавить эксперта"}
           </DialogTitle>
         </DialogHeader>
-
-        {expertError && (
-          <AppAlert type="error" message={expertError} onClose={onErrorClose} />
-        )}
 
         <Form {...form}>
           <form onSubmit={handleSubmit} className="space-y-4">

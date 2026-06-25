@@ -70,8 +70,9 @@ function Step3({ onValidationChange }: { onValidationChange: (isValid: boolean) 
     watchedValues.analog2_price ?? 0,
     watchedValues.analog3_price ?? 0,
   ]);
+  const depreciationValue = watchedValues.depreciation_pct ?? 90;
   const marketPrice = averagePrice !== null
-    ? calcMarketPrice(averagePrice, watchedValues.depreciation_pct ?? 90)
+    ? calcMarketPrice(averagePrice, depreciationValue)
     : null;
 
   const renderAnalog = (index: 1 | 2 | 3) => {
@@ -199,7 +200,7 @@ function Step3({ onValidationChange }: { onValidationChange: (isValid: boolean) 
                 <FormLabel>% физического износа / Jismoniy eskirish %</FormLabel>
                 <Select
                   onValueChange={(val) => field.onChange(Number(val))}
-                  value={String(field.value)}
+                  value={String(field.value ?? 90)}
                 >
                   <FormControl>
                     <SelectTrigger>

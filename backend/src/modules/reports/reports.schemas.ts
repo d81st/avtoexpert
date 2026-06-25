@@ -42,15 +42,19 @@ export const step2Schema = z.object({
   passportMatch: z.boolean().optional(),
 });
 
+// PostgreSQL integer max = 2^31-1; bigint fields allow larger values
+const pgInteger = z.coerce.number().int().nonnegative().max(2_147_483_647);
+const pgBigint = z.coerce.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER);
+
 export const step3Schema = z.object({
   productionStatus: optionalString,
-  analog1Mileage: nonNegativeInt.optional(),
-  analog1Price: nonNegativeInt.optional(),
-  analog2Mileage: nonNegativeInt.optional(),
-  analog2Price: nonNegativeInt.optional(),
-  analog3Mileage: nonNegativeInt.optional(),
-  analog3Price: nonNegativeInt.optional(),
-  factoryPrice: nonNegativeInt.optional(),
+  analog1Mileage: pgInteger.optional(),
+  analog1Price: pgBigint.optional(),
+  analog2Mileage: pgInteger.optional(),
+  analog2Price: pgBigint.optional(),
+  analog3Mileage: pgInteger.optional(),
+  analog3Price: pgBigint.optional(),
+  factoryPrice: pgBigint.optional(),
   depreciationPct: z.coerce.number().int().min(0).max(100).optional(),
 });
 

@@ -10,6 +10,7 @@ import {
   photoParamsSchema,
   uuidParamsSchema,
 } from '../../common/schemas/common.js';
+import { docGenerationLimiter } from './docGenerationLimiter.js';
 import {
   autosaveSchema,
   createReportSchema,
@@ -145,6 +146,7 @@ router.delete(
 router.post(
   '/:id/finalize-and-generate',
   authMiddleware,
+  docGenerationLimiter,
   validate({ params: uuidParamsSchema }),
   async (req: AuthRequest, res) => {
     const result = await reportService.finalizeAndGenerate(

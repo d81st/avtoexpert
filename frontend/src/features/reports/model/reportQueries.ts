@@ -1,4 +1,9 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  keepPreviousData,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 import { reportService, type ReportsQueryParams } from "../api/reportApi";
 import { photoService } from "../api/photoApi";
 import type { Step2Data, Step3Data, Step4Data, Step5Data } from "../types";
@@ -16,7 +21,16 @@ export const reportQueryKeys = {
 export function useReportsQuery(params: ReportsQueryParams) {
   return useQuery({
     queryKey: reportQueryKeys.list(params),
-    queryFn: () => reportService.getReports(params),
+    // Помечаем запрос как `silent`, чтобы axios-интерсептор не показывал
+    // глобальный error-toast: ошибки этого запроса обрабатываются локально
+    // на Dashboard (transient toast при наличии кэша; persistent inline-блок
+    // при пустом списке). См. design.md §3.1; Requirements 1.9, 5.4, 5.12.
+    queryFn: () => reportService.getReports(params, { silent: true }),
+    // Сохраняем предыдущие данные при смене queryKey (например, при изменении
+    // search/page/limit), чтобы Search_Input на Dashboard не размонтировался
+    // во время повторного запроса и пользователь не терял фокус/каретку
+    // (см. design.md §3.1; Requirements 1.1, 1.2, 1.7).
+    placeholderData: keepPreviousData,
   });
 }
 
@@ -40,54 +54,32 @@ export function useCreateReportMutation() {
 }
 
 export function useUpdateStep2Mutation(reportId: string) {
-  const queryClient = useQueryClient();
-
+  // Detail-инвалидация после шаговых мутаций намеренно убрана:
+  // данные шага уже актуальны в useFormStore, повторный GET /api/reports/:id избыточен
+  // (см. design.md, аудит 7.A; Requirements 7.1, 7.7, 7.9).
   return useMutation({
     mutationFn: (data: Step2Data) => reportService.updateStep2(reportId, data),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({
-        queryKey: reportQueryKeys.detail(reportId),
-      });
-    },
   });
 }
 
 export function useUpdateStep3Mutation(reportId: string) {
-  const queryClient = useQueryClient();
-
+  // Detail-инвалидация после шаговых мутаций намеренно убрана (см. useUpdateStep2Mutation).
   return useMutation({
     mutationFn: (data: Step3Data) => reportService.updateStep3(reportId, data),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({
-        queryKey: reportQueryKeys.detail(reportId),
-      });
-    },
   });
 }
 
 export function useUpdateStep4Mutation(reportId: string) {
-  const queryClient = useQueryClient();
-
+  // Detail-инвалидация после шаговых мутаций намеренно убрана (см. useUpdateStep2Mutation).
   return useMutation({
     mutationFn: (data: Step4Data) => reportService.updateStep4(reportId, data),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({
-        queryKey: reportQueryKeys.detail(reportId),
-      });
-    },
   });
 }
 
 export function useUpdateStep5Mutation(reportId: string) {
-  const queryClient = useQueryClient();
-
+  // Detail-инвалидация после шаговых мутаций намеренно убрана (см. useUpdateStep2Mutation).
   return useMutation({
     mutationFn: (data: Step5Data) => reportService.updateStep5(reportId, data),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({
-        queryKey: reportQueryKeys.detail(reportId),
-      });
-    },
   });
 }
 
