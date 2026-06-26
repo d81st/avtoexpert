@@ -1,6 +1,7 @@
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
+import { authService } from '@/features/auth/api/authApi';
 import { useAuthStore } from '@/shared/auth/useAuthStore';
 
 interface AppLayoutProps {
@@ -17,12 +18,20 @@ export default function AppLayout({
   headerActions,
 }: AppLayoutProps) {
   const user = useAuthStore((s) => s.user);
-  const logout = useAuthStore((s) => s.logout);
   const navigate = useNavigate();
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
-  const handleLogout = () => {
-    logout();
-    navigate('/login');
+  const handleLogout = async () => {
+    // R2.8 — идемпотентность: повторные клики игнорируются, пока идёт logout.
+    if (isLoggingOut) return;
+    setIsLoggingOut(true);
+    try {
+      // R2.2 — серверный POST /logout; R2.4 — локальный logout сработает
+      // даже при сетевой/серверной ошибке (внутри authService.logout()).
+      await authService.logout();
+    } finally {
+      navigate('/login');
+    }
   };
 
   return (
@@ -36,7 +45,12 @@ export default function AppLayout({
           <div className="flex items-center gap-4">
             <span className="text-gray-700 font-medium">{user?.full_name}</span>
             {headerActions}
-            <Button onClick={handleLogout} variant="destructive" size="sm">
+            <Button
+              onClick={handleLogout}
+              disabled={isLoggingOut}
+              variant="destructive"
+              size="sm"
+            >
               Выйти
             </Button>
           </div>

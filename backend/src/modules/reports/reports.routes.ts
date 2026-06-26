@@ -163,11 +163,27 @@ router.get(
   authMiddleware,
   validate({ params: uuidParamsSchema }),
   async (req: AuthRequest, res) => {
-    const { filePath, filename } = await reportService.getDownloadPath(
+    // In-memory regeneration (design §2.1, R2.3-R2.7). `streamDownload`
+    // performs the ownership check (R2.9 → 404), the `status = 'completed'`
+    // gate (R2.8 → 409), reloads `Report_DB_State`, and returns a freshly
+    // rendered `Buffer`. Headers are set ONLY after the await resolves, so
+    // an error thrown by the service propagates to `errorHandler` before any
+    // response bytes are sent (see design §Error Handling). The route is
+    // intentionally NOT wrapped in `docGenerationLimiter` (R10.4).
+    const { buffer, filename } = await reportService.streamDownload(
       getCreatorId(req),
       req.params.id as string,
     );
-    res.download(filePath, filename);
+    res.setHeader(
+      'Content-Type',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    );
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename="${filename}"`,
+    );
+    res.setHeader('Cache-Control', 'no-store');
+    res.status(200).send(buffer);
   },
 );
 

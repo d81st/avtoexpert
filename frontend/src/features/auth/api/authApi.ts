@@ -32,7 +32,38 @@ export const authService = {
     return response.data;
   },
 
-  logout() {
-    useAuthStore.getState().logout();
+  /**
+   * Серверный logout (A2).
+   *
+   * Шлёт `POST /api/logout` через `apiClient` с `background: true`, чтобы
+   * запрос не подсвечивался Global_Loading_Manager'ом. Серверная ошибка
+   * (сеть/4xx/5xx) проглатывается — Requirement 2.4 требует, чтобы
+   * локальный `Auth_Store.logout()` отработал независимо от исхода
+   * серверного вызова. `useAuthStore.getState().logout()` вызывается
+   * ровно один раз в `finally`.
+   */
+  async logout(): Promise<void> {
+    try {
+      await apiClient.post('/logout', null, { background: true });
+    } catch {
+      // R2.4 — серверная ошибка не должна блокировать локальный logout.
+    } finally {
+      useAuthStore.getState().logout();
+    }
+  },
+
+  /**
+   * Тонкий wrapper над `POST /api/refresh` (A3).
+   *
+   * Используется `Refresh_Coordinator`-ом внутри `API_Client` для
+   * single-flight продления сессии. Стор не трогается — backend
+   * перевыпускает все три auth-cookie, профиль уже в `Auth_Store`.
+   * `silent: true` (AC 5.12) глушит автоматический error-toast: фейл
+   * refresh уходит в terminal sink (`forceLogout()`), отдельный toast
+   * пользователю не нужен. `background: true` (AC 4.4) — refresh не
+   * показывается как видимый сетевой round-trip.
+   */
+  async refreshSession(): Promise<void> {
+    await apiClient.post('/refresh', null, { background: true, silent: true });
   },
 };

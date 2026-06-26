@@ -7,83 +7,69 @@ import { imageSize } from 'image-size';
 import PizZip from 'pizzip';
 import { env } from '../../config/env.js';
 import { logger } from '../../shared/logger/logger.js';
+import {
+  computeSlotImageSizePx,
+  emptyPhotoSlotScope,
+  PHOTO_SLOT_COUNT,
+  type PhotoSlotScope,
+  parseSlotIndexFromTag,
+} from './photoSlots.js';
 import { reportRepository } from './reports.repository.js';
 import { precheckTables } from './tableMapper.js';
 
-// --- Photo_Insertion image sizing (R4.8, design §3.8) ---
+// --- Photo_Insertion image sizing ---
+//
+// Slot-based photo rendering helpers (`createPhotoImageModule`,
+// `buildPhotoScope`) are introduced in tasks 6.2 / 6.3 and import their
+// constants from `./photoSlots.js`. The legacy global 14 cm width bound
+// (`MAX_IMAGE_WIDTH_EMU`, `MAX_IMAGE_WIDTH_PX`, `computeImageSizePx`) and the
+// legacy array-shaped `PhotoScopeEntry`/`buildPhotoScope` are intentionally
+// removed here (task 6.1, R5.2) so that no downstream code accidentally
+// reaches for the old API while the new implementation is being plugged in.
 
 /**
- * Maximum rendered image width, expressed in EMU (English Metric Units), equal
- * to the page text-area width of **14 cm** (≈ 5_300_000 EMU). The Photo_Insertion
- * image module bounds every `{%image}` to this width while preserving aspect
- * ratio (R4.8 / design §3.4, §3.8).
- */
-export const MAX_IMAGE_WIDTH_EMU = 5_300_000;
-
-/**
- * EMU per pixel at 96 DPI (914400 EMU/inch ÷ 96 px/inch). The image module's
- * `getSize` callback returns dimensions in **pixels**; the module multiplies by
- * this factor internally to emit the `<wp:extent>` EMU values. We therefore
- * express the 14 cm bound as a pixel width here.
- */
-const EMU_PER_PIXEL = 9525;
-
-/** The 14 cm width bound converted to whole pixels for `getSize`. */
-export const MAX_IMAGE_WIDTH_PX = Math.floor(MAX_IMAGE_WIDTH_EMU / EMU_PER_PIXEL);
-
-/**
- * Bounds a source image's pixel dimensions so that its width does not exceed
- * {@link MAX_IMAGE_WIDTH_PX} (the 14 cm text-area width, R4.8), preserving the
- * original aspect ratio. Images already narrower than the bound are returned
- * unchanged (no upscaling). Non-finite or non-positive inputs fall back to a
- * square at the maximum width so a malformed dimension read can never produce a
- * zero/NaN `<wp:extent>`.
- */
-export function computeImageSizePx(
-  srcWidth: number,
-  srcHeight: number,
-): [number, number] {
-  if (
-    !Number.isFinite(srcWidth) ||
-    !Number.isFinite(srcHeight) ||
-    srcWidth <= 0 ||
-    srcHeight <= 0
-  ) {
-    return [MAX_IMAGE_WIDTH_PX, MAX_IMAGE_WIDTH_PX];
-  }
-
-  if (srcWidth <= MAX_IMAGE_WIDTH_PX) {
-    return [Math.round(srcWidth), Math.round(srcHeight)];
-  }
-
-  const ratio = MAX_IMAGE_WIDTH_PX / srcWidth;
-  return [MAX_IMAGE_WIDTH_PX, Math.max(1, Math.round(srcHeight * ratio))];
-}
-
-/**
- * Builds the Photo_Insertion image module that backs the `{%image}` tag inside
- * the `{#photos}…{/photos}` Photo_Insertion_Block (design §3.8, R8.11). The
- * `{#photos}` loop scope wiring (`buildPhotoScope`) lands in tasks 9.2 / 19.9;
- * this factory only configures the module so it is ready to attach.
+ * Builds the `docxtemplater-image-module-free` instance backing the six
+ * `{%photo_N}` slot placeholders in `Docx_Template_V3`. The module is path-
+ * based: `getImage` reads the absolute filesystem path stored in
+ * `scope.photo_N`, and `getSize` dispatches per-slot dimensions through
+ * `parseSlotIndexFromTag` + `computeSlotImageSizePx` (so each `{%photo_N}`
+ * gets `SLOT_SIZE_INVENTORY[N - 1]`-sized output rather than the legacy
+ * global 14 cm width bound).
  *
- *   - `centered: false` — `{%image}` renders left-aligned (R8.11);
- *   - `getImage` — path mode: `tagValue` is an absolute filesystem path to the
- *     Normalized_Image bytes (§3.8); read synchronously so `getSize` stays
- *     synchronous and `doc.render()` need not switch to the async API;
- *   - `getSize` — reads the decoded pixel dimensions and bounds the width to
- *     14 cm preserving aspect ratio via {@link computeImageSizePx} (R4.8).
+ * Empty slots (`scope.photo_N === ''`) are handled in two layers (R5.4):
+ *   1. The image module's own `render()` short-circuits on a falsy
+ *      `tagValue` before ever calling `getImage`, emitting the tag's plain
+ *      text-run XML in place. The `{%photo_N}` placeholder therefore
+ *      vanishes from the output without a `<w:drawing>`.
+ *   2. As a defensive fallback (in case the module's contract changes),
+ *      `getImage` itself returns `null` for falsy `tagValue`. Combined with
+ *      the relaxed return type in `types/docxtemplater-image-module-free.d.ts`,
+ *      this keeps `createPhotoImageModule` total without an extra throw path.
+ *
+ * `getSize` parses the slot index out of `tagName` (the docxtemplater tag
+ * is always `photo_N`); a malformed tag falls back to slot 1 so the module
+ * never throws mid-render (R7.6 is already enforced inside
+ * `computeSlotImageSizePx` for degenerate `imageSize` results).
  */
 export function createPhotoImageModule(): ImageModule {
   return new ImageModule({
     centered: false,
     fileType: 'docx',
-    getImage(tagValue: string): Buffer {
-      // Path mode (§3.8): tagValue is an absolute path to the Normalized_Image.
+    getImage(tagValue: string, _tagName: string): Buffer | null {
+      // Empty slot: the image module already skips `getImage` when the
+      // scope value is falsy, but returning `null` keeps the callback
+      // total for any defensive future caller (R5.4).
+      if (!tagValue) return null;
       return readFileSync(tagValue);
     },
-    getSize(img: Buffer | Uint8Array): [number, number] {
+    getSize(
+      img: Buffer | Uint8Array,
+      _tagValue: string,
+      tagName: string,
+    ): [number, number] {
       const { width, height } = imageSize(img);
-      return computeImageSizePx(width ?? 0, height ?? 0);
+      const slotIndex = parseSlotIndexFromTag(tagName) ?? 1;
+      return computeSlotImageSizePx(width ?? 0, height ?? 0, slotIndex);
     },
   });
 }
@@ -181,85 +167,89 @@ export function mapMaterials(items: DbMaterial[]): TemplateMaterial[] {
   }));
 }
 
-// --- Photo_Insertion loop scope (R4.8, R4.9 / R8.11–R8.14, design §3.8) ---
+// --- Photo_Insertion loop scope ---
+//
+// The legacy array-shaped `PhotoScopeEntry`/`buildPhotoScope` were removed in
+// task 6.1 (R5.2). The slot-based replacement (`PhotoSlotScope` + a new
+// `buildPhotoScope` returning `Promise<PhotoSlotScope>`) is wired in below
+// (task 6.3) alongside the rewritten `createPhotoImageModule` (task 6.2).
 
 /**
- * A single entry of the `{#photos}…{/photos}` Photo_Insertion_Block render
- * scope (design §3.8, Requirement 8.12). Each entry backs exactly one loop
- * iteration in `Docx_Template_V2`:
+ * Builds the slot-based render scope for the six `{%photo_N}` and
+ * `{caption_N}` placeholders of `Docx_Template_V3` from the `photos` rows
+ * of `reportId`. The returned `PhotoSlotScope` always carries exactly the
+ * 12 known keys (`photo_1..photo_6`, `caption_1..caption_6`); empty slots
+ * are represented by `''` rather than `undefined` (P1, P3 / R5.1c, R6.2,
+ * R9.4, R9.5).
  *
- *   - `image` — pointer to the Normalized_Image consumed by the
- *     {@link createPhotoImageModule} `{%image}` tag. In production this is an
- *     absolute filesystem path (path mode, §3.8); the image module reads the
- *     bytes synchronously via `getImage`.
- *   - `caption` — the Photo_Caption literal substituted into `{caption}`.
- *     A `null` caption MUST be passed as an empty string `''` (R8.12); the
- *     `Фото N:` prefix lives in the template literal text and is NOT included
- *     here (it must not be duplicated by the generator).
+ * Semantics per row (covering R5.1, R6.1–R6.7, R8.1–R8.5, R9.2–R9.4):
  *
- * The array is expected to be pre-sorted by Photo_Position ascending. The
- * production source of this array is `buildPhotoScope(reportId)` (task 19.9,
- * not implemented here); `generateDocument` only consumes whatever scope it is
- * handed and renders zero iterations for an empty/absent array.
- */
-export interface PhotoScopeEntry {
-  image: string;
-  caption: string;
-}
-
-/**
- * Builds the `{#photos}…{/photos}` Photo_Insertion_Block render scope for the
- * report identified by `reportId`. Returns one {@link PhotoScopeEntry} per
- * readable Photo_Asset, ordered by Photo_Position ascending (R8.10 / R8.12).
- *
- * For each photo row:
- *   - `image` resolves to an absolute filesystem path under {@link env.PHOTOS_DIR}
- *     (path mode consumed by `createPhotoImageModule`'s `getImage`); `path.basename`
- *     is applied to `file_path` first so a row that somehow carries a directory
- *     segment cannot escape `PHOTOS_DIR`.
- *   - `caption` carries the user-supplied Photo_Caption with `null` collapsed
- *     to the empty string `''` (R8.12). The literal `Фото N:` prefix lives in
- *     the template; the generator MUST NOT duplicate it here.
- *
- * R8.14 fallback: a file that fails the `fs.access(..., R_OK)` readability
- * check is dropped from the scope (the loop iteration for that photo never
- * runs) and a structured `photo_missing_at_render` `logger.error` entry is
- * emitted with `{ photoId, file_path, reason }`. A single unreadable file
- * degrades the document by exactly one photo without aborting rendering for
- * the remaining `k-1` photos — `buildPhotoScope` MUST NOT throw on a missing
- * file.
- *
- * R8.13 corollary: when the report has no Photo_Asset rows (or every row is
- * unreadable), the function returns `[]`, which renders zero loop iterations
- * in docxtemplater and leaves no `<w:drawing>` / `<w:p>` caption paragraph in
- * `word/document.xml`.
+ *   * Rows are loaded via
+ *     `reportRepository.listPhotosByReportIdOrderedByPosition` — `position
+ *     ASC` is the only ordering signal (R6.1).
+ *   * Non-integer / out-of-range `position` (∉ {1..PHOTO_SLOT_COUNT}) is
+ *     silently ignored (R6.6, P5, P6).
+ *   * The first row at a given `position` wins; subsequent duplicates are
+ *     recorded and surfaced as a single
+ *     `logger.warn('duplicate_photo_position')` per colliding position
+ *     (R6.7, P15) after the main loop.
+ *   * `caption_N` is assigned BEFORE the file check, so a missing or
+ *     unreadable file does not erase the user's caption (R8.4, P8).
+ *   * Missing `filePath` ⇒ `logger.error('photo_missing_at_render',
+ *     { reason: 'no_file_path' })`; `photo_N` stays `''` (R8.3).
+ *   * `fs.access(absPath, R_OK)` failure ⇒ same `photo_missing_at_render`
+ *     event with `reason: err.code ?? 'unknown'`; `photo_N` stays `''`
+ *     (R8.1, R8.2, P9). One bad file never blocks the other five slots
+ *     (R8.5, P9).
+ *   * `absPath` is `path.resolve(env.PHOTOS_DIR, path.basename(row.filePath))`
+ *     — `basename` strips any directory segments smuggled into the
+ *     stored path, so the resolved path cannot escape `PHOTOS_DIR`
+ *     (R6.3).
  */
 export async function buildPhotoScope(
   reportId: string,
-): Promise<PhotoScopeEntry[]> {
+): Promise<PhotoSlotScope> {
   const rows =
     await reportRepository.listPhotosByReportIdOrderedByPosition(reportId);
 
-  const scope: PhotoScopeEntry[] = [];
+  const scope = emptyPhotoSlotScope();
+  const seenPositions = new Set<number>();
+  const duplicateGroups = new Map<number, string[]>(); // position -> photoIds
+
   for (const row of rows) {
-    // Defensive: `photos.file_path` is schema-nullable. A row without a path
-    // cannot be rendered, so log and skip it like any other unreadable photo.
+    const pos = row.position;
+
+    // R6.6 + P6: out-of-range / non-integer ignored silently.
+    if (!Number.isInteger(pos) || pos < 1 || pos > PHOTO_SLOT_COUNT) {
+      continue;
+    }
+
+    // R6.7 + P15: duplicate position. Repository orders by position ASC,
+    // therefore the first row wins; subsequent duplicates are recorded
+    // for a single aggregated warn.
+    if (seenPositions.has(pos)) {
+      const existing = duplicateGroups.get(pos) ?? [];
+      duplicateGroups.set(pos, [...existing, row.id]);
+      continue;
+    }
+    seenPositions.add(pos);
+
+    // R6.4 + R8.4: caption is preserved INDEPENDENT of file availability.
+    scope[`caption_${pos}` as keyof PhotoSlotScope] = row.caption ?? '';
+
+    // R8.3: missing file_path.
     if (!row.filePath) {
       logger.error('photo_missing_at_render', {
         photoId: row.id,
         file_path: row.filePath,
         reason: 'no_file_path',
       });
-      continue;
+      continue; // photo_N stays ''
     }
 
     const absPath = path.resolve(env.PHOTOS_DIR, path.basename(row.filePath));
 
     try {
-      // Pre-read once here to fail fast and emit a structured log entry for
-      // missing/unreadable files (R8.14). The image module would otherwise
-      // attempt `fs.readFileSync(absPath)` deep inside `doc.render()` and
-      // abort the whole document.
       await fs.access(absPath, fs.constants.R_OK);
     } catch (err) {
       const reason =
@@ -269,12 +259,19 @@ export async function buildPhotoScope(
         file_path: row.filePath,
         reason,
       });
-      continue; // R8.14: skip this single photo, keep rendering the rest.
+      continue; // photo_N stays ''
     }
 
-    scope.push({
-      image: absPath,
-      caption: row.caption ?? '', // R8.12: null caption → empty string.
+    scope[`photo_${pos}` as keyof PhotoSlotScope] = absPath;
+  }
+
+  // Emit one warn per duplicate-position collision (R6.7).
+  for (const [position, dupIds] of duplicateGroups) {
+    const winnerId = rows.find((r) => r.position === position)?.id;
+    logger.warn('duplicate_photo_position', {
+      reportId,
+      position,
+      photoIds: winnerId ? [winnerId, ...dupIds] : dupIds,
     });
   }
 
@@ -283,7 +280,7 @@ export async function buildPhotoScope(
 
 // --- Report data interface ---
 
-interface ReportData {
+export interface ReportData {
   expertName: string;
   reportNumber: string;
   reportDate: string;
@@ -318,14 +315,16 @@ interface ReportData {
   materials: DbMaterial[];
   grandTotal: number;
   /**
-   * Optional `{#photos}…{/photos}` Photo_Insertion_Block render scope (R4.8,
-   * R4.9 / R8.11–R8.14). Each entry is a `{ image, caption }` pair feeding one
-   * loop iteration; the array MUST be pre-sorted by Photo_Position ascending.
-   * Defaults to an empty array, which renders zero photo iterations. The
-   * production source is `buildPhotoScope(reportId)` (task 19.9), which will
-   * populate this field; until then callers may omit it.
+   * Slot-based render scope for the six `{%photo_N}` and `{caption_N}`
+   * placeholders of `Docx_Template_V3`. Replaces the legacy
+   * `photos?: PhotoScopeEntry[]` (array-shaped, removed in task 6.1 per
+   * R5.2). When omitted, `generateDocument` substitutes
+   * `emptyPhotoSlotScope()` so the six slots render empty without leaving
+   * literal `{%photo_N}` / `{caption_N}` markers in the output (R9.5).
+   * Populated by `reports.service.ts` from
+   * `buildPhotoScope(reportId)` (task 7.1).
    */
-  photos?: PhotoScopeEntry[];
+  photoSlots?: PhotoSlotScope;
 }
 
 // Cache template in memory after first read
@@ -364,10 +363,10 @@ export class DocGenerator {
       const doc = new Docxtemplater(zip, {
         paragraphLoop: true,
         linebreaks: true,
-        // Photo_Insertion image module backing the `{%image}` tag inside the
-        // `{#photos}…{/photos}` Photo_Insertion_Block (design §3.8, R4.8/R8.11).
-        // Attaching it is harmless when the template has no image tags: the
-        // module only acts on `{%image}` placeholders.
+        // Slot-based photo image module (task 6.2). Backs the six
+        // `{%photo_N}` placeholders in `Docx_Template_V3`: per-slot sizing
+        // via `SLOT_SIZE_INVENTORY` and null-tolerant `getImage` for empty
+        // slots. See `createPhotoImageModule` above.
         modules: [createPhotoImageModule()],
         // Non-required scalar placeholders that resolve to null/undefined
         // render as an empty string instead of leaving literal `{markers}`
@@ -384,6 +383,7 @@ export class DocGenerator {
         },
       });
 
+      const photoSlots = data.photoSlots ?? emptyPhotoSlotScope();
       const renderData = {
         expert_name: data.expertName,
         report_number: data.reportNumber,
@@ -418,16 +418,16 @@ export class DocGenerator {
         spare_parts: mapSpareParts(data.spareParts),
         materials: mapMaterials(data.materials),
         grand_total: data.grandTotal,
-        // `{#photos}…{/photos}` Photo_Insertion_Block scope (R4.8, R4.9 /
-        // R8.11–R8.14, design §3.8). Each `{ image, caption }` entry drives one
-        // loop iteration; the registered Photo_Insertion image module
-        // (createPhotoImageModule) backs the `{%image}` tag inside the loop and
-        // `{caption}` renders the literal caption. An empty/absent array yields
-        // zero iterations. The production source of this scope is
-        // buildPhotoScope(reportId) (task 19.9); the slot-based photo_1..photo_N
-        // mapping and the legacy `photo_skipped_in_doc` slot-overflow audit hook
-        // are intentionally NOT emitted here.
-        photos: data.photos ?? [],
+        // Slot-based photo scope (task 6.4, R5.1/R5.2/R5.3/R5.4/R5.5,
+        // R9.5): spreads the 12 fixed keys `photo_1..photo_6` and
+        // `caption_1..caption_6` into the render context. The
+        // `createPhotoImageModule` callback resolves each `{%photo_N}`
+        // against `renderData.photo_N` (absolute file path on disk or
+        // `''` for an empty slot); each `{caption_N}` is a scalar string
+        // that may equal `''`. The legacy `photos: data.photos ?? []`
+        // array-shaped key is intentionally absent — `renderData` MUST
+        // NOT carry a `photos` key going forward (R5.2).
+        ...photoSlots,
       };
 
       // Pre-validate repeating-row groups immediately before render (R5.4, R5.9):

@@ -1,30 +1,52 @@
 {
   "template": "original_example.docx",
-  "sizeBytes": 1251091,
+  "sizeBytes": 51372,
   "partsScanned": [
     "word/document.xml",
     "word/footer1.xml"
   ],
   "counts": {
-    "{#photos}": 1,
-    "{%image}": 1,
-    "{/photos}": 1,
-    "{caption}": 1
+    "{%photo_1}": 1,
+    "{%photo_2}": 1,
+    "{%photo_3}": 1,
+    "{%photo_4}": 1,
+    "{%photo_5}": 1,
+    "{%photo_6}": 1,
+    "{caption_1}": 1,
+    "{caption_2}": 1,
+    "{caption_3}": 1,
+    "{caption_4}": 1,
+    "{caption_5}": 1,
+    "{caption_6}": 1
   },
   "classified": {
-    "loopOpen": [
-      "{#photos}"
-    ],
-    "loopClose": [
-      "{/photos}"
-    ],
+    "loopOpen": [],
+    "loopClose": [],
     "rawImageTags": [
-      "{%image}"
+      "{%photo_1}",
+      "{%photo_2}",
+      "{%photo_3}",
+      "{%photo_4}",
+      "{%photo_5}",
+      "{%photo_6}"
     ],
     "invertedSections": [],
     "scalars": [
-      "{caption}"
+      "{caption_1}",
+      "{caption_2}",
+      "{caption_3}",
+      "{caption_4}",
+      "{caption_5}",
+      "{caption_6}"
     ],
-    "legacyPhotoSlots": "none"
-  }
+    "legacyPhotoSlots": [
+      "{%photo_1}",
+      "{%photo_2}",
+      "{%photo_3}",
+      "{%photo_4}",
+      "{%photo_5}",
+      "{%photo_6}"
+    ]
+  },
+  "slotSizes": []
 }
