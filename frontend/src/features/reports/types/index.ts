@@ -9,7 +9,7 @@ export interface ExpertsQueryParams {
 
 export interface Report {
   id: string;
-  status: "draft" | "completed";
+  status: 'draft' | 'completed';
   current_step: number;
   expert_id: string;
   report_number: string;
@@ -36,7 +36,7 @@ export interface Step2Data {
   tech_passport: string;
   tech_passport_place?: string;
   mileage: number;
-  odometer_status: "Исправен" | "Неисправен";
+  odometer_status: 'Исправен' | 'Неисправен';
   mileage_by_method?: number;
   vin_code: string;
   engine_number?: string;
@@ -46,7 +46,7 @@ export interface Step2Data {
 }
 
 export interface Step3Data {
-  production_status: "В производстве" | "Снят с производства";
+  production_status: 'В производстве' | 'Снят с производства';
   analog1_mileage: number;
   analog1_price: number;
   analog2_mileage: number;
@@ -60,7 +60,7 @@ export interface Step3Data {
 export interface RepairWork {
   part_name: string;
   type: "Bo'luvchi" | "Bo'lmaydigan";
-  complexity: "BT-1" | "BT-2" | "BT-3";
+  complexity: 'BT-1' | 'BT-2' | 'BT-3';
   price: number;
 }
 
@@ -94,6 +94,27 @@ export interface ReportPhoto {
   id: string;
   url: string;
   file_path?: string;
+  /**
+   * Immutable server-assigned upload ordinal within a report (R4.6). Present on
+   * the upload (`POST`) response and surfaced by `GET /api/reports/:id/photos`
+   * until task 19.8 switches the GET sort key to `position`; used as the
+   * thumbnail label and as a deterministic fallback ordering before `position`
+   * is populated by the server payload.
+   */
+  sequence_number?: number;
+  /**
+   * User-provided caption text (R8.1). Length is bounded by the server at
+   * 200 Unicode code points after NFC normalisation; `null` (or missing)
+   * indicates no caption has been set yet.
+   */
+  caption?: string | null;
+  /**
+   * 1-based display position within a report (R8.2). Allocated at upload time
+   * to the next free slot in `[1, 20]` and mutated by `PATCH … { position }`
+   * (R8.4). Surfaced by `GET /api/reports/:id/photos` from task 19.8 onward,
+   * used as the primary ordering key when present.
+   */
+  position?: number;
 }
 
 export interface Step5Data {

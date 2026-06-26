@@ -1,4 +1,4 @@
-import { Toaster as SonnerToaster, type ToasterProps } from "sonner";
+import { Toaster as SonnerToaster, type ToasterProps } from 'sonner';
 
 /**
  * shadcn/ui обёртка над `sonner` Toaster.

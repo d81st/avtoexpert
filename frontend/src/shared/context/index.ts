@@ -1,2 +1,2 @@
-export { ThemeProvider, useTheme } from "./ThemeContext";
-export { LocaleProvider, useLocale } from "./LocaleContext";
+export { LocaleProvider, useLocale } from './LocaleContext';
+export { ThemeProvider, useTheme } from './ThemeContext';

@@ -1,8 +1,6 @@
 import { create } from 'zustand';
+import { hydrateFormFromReport } from '../lib/reportMapper';
 import type { Step1Data, Step2Data, Step3Data, Step4Data, Step5Data } from '../types';
-import {
-  hydrateFormFromReport,
-} from '../lib/reportMapper';
 
 interface FormState {
   currentStep: number;
@@ -46,12 +44,13 @@ export const useFormStore = create<FormState>((set) => ({
       step5: hydrated.step5,
     }));
   },
-  resetForm: () => set({
-    currentStep: 1,
-    step1: null,
-    step2: null,
-    step3: null,
-    step4: null,
-    step5: null,
-  }),
+  resetForm: () =>
+    set({
+      currentStep: 1,
+      step1: null,
+      step2: null,
+      step3: null,
+      step4: null,
+      step5: null,
+    }),
 }));

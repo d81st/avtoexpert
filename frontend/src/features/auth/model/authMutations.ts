@@ -1,6 +1,6 @@
-import { useMutation } from "@tanstack/react-query";
-import type { AxiosRequestConfig } from "axios";
-import { authService } from "../api/authApi";
+import { useMutation } from '@tanstack/react-query';
+import type { AxiosRequestConfig } from 'axios';
+import { authService } from '../api/authApi';
 
 export interface LoginPayload {
   login: string;

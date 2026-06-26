@@ -19,7 +19,7 @@ export interface AdminCreator {
   created_at: string;
 }
 
-export type AdminTab = "reports" | "creators" | "template";
+export type AdminTab = 'reports' | 'creators' | 'template';
 
 export interface AdminPagination {
   page: number;
@@ -32,5 +32,5 @@ export interface AdminReportsQueryParams {
   page?: number;
   limit?: number;
   search?: string;
-  status?: "draft" | "completed";
+  status?: 'draft' | 'completed';
 }

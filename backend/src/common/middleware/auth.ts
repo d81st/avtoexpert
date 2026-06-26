@@ -1,6 +1,7 @@
 import type { NextFunction, Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
 import { env } from '../../config/env.js';
+import { ACCESS_TOKEN_COOKIE } from '../../modules/auth/auth.service.js';
 import { forbidden } from '../errors/httpError.js';
 
 export interface AuthRequest extends Request {
@@ -16,7 +17,7 @@ export const authMiddleware = (
   res: Response,
   next: NextFunction,
 ) => {
-  const token = req.headers.authorization?.replace('Bearer ', '');
+  const token = req.cookies?.[ACCESS_TOKEN_COOKIE];
 
   if (!token) {
     res.status(401).json({ error: 'Token is required' });

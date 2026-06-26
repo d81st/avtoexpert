@@ -1,12 +1,7 @@
-import { useRef } from "react";
-import { useFormStore } from "../model/useFormStore";
-import type {
-  Step2Data,
-  Step3Data,
-  Step4Data,
-  Step5Data,
-} from "../types";
-import type { UseReportWizardReturn } from "./useReportWizard";
+import { useRef } from 'react';
+import { useFormStore } from '../model/useFormStore';
+import type { Step2Data, Step3Data, Step4Data, Step5Data } from '../types';
+import type { UseReportWizardReturn } from './useReportWizard';
 
 interface UseWizardStepSaveParams {
   wizard: UseReportWizardReturn;
@@ -40,7 +35,7 @@ function deepEqual(a: unknown, b: unknown): boolean {
     return false;
   }
   if (typeof a !== typeof b) return false;
-  if (typeof a !== "object") {
+  if (typeof a !== 'object') {
     // Покрывает NaN === NaN; остальные примитивы уже отсечены `a === b`.
     return Number.isNaN(a as number) && Number.isNaN(b as number);
   }
@@ -58,7 +53,7 @@ function deepEqual(a: unknown, b: unknown): boolean {
   const bKeys = Object.keys(bObj);
   if (aKeys.length !== bKeys.length) return false;
   for (const key of aKeys) {
-    if (!Object.prototype.hasOwnProperty.call(bObj, key)) return false;
+    if (!Object.hasOwn(bObj, key)) return false;
     if (!deepEqual(aObj[key], bObj[key])) return false;
   }
   return true;

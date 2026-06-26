@@ -1,12 +1,11 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { expertService } from "../api/expertApi";
-import type { ExpertsQueryParams } from "../types";
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { expertService } from '../api/expertApi';
+import type { ExpertsQueryParams } from '../types';
 
 export const expertQueryKeys = {
-  all: ["experts"] as const,
-  lists: () => [...expertQueryKeys.all, "list"] as const,
-  list: (params?: ExpertsQueryParams) =>
-    [...expertQueryKeys.lists(), params] as const,
+  all: ['experts'] as const,
+  lists: () => [...expertQueryKeys.all, 'list'] as const,
+  list: (params?: ExpertsQueryParams) => [...expertQueryKeys.lists(), params] as const,
 };
 
 export function useExpertsQuery(params?: ExpertsQueryParams) {

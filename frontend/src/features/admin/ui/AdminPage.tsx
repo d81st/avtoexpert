@@ -1,19 +1,15 @@
-import { useAdmin } from "../hooks/useAdmin";
-import AdminReportsTab from "./AdminReportsTab";
-import AdminCreatorsTab from "./AdminCreatorsTab";
-import AdminTemplateTab from "./AdminTemplateTab";
-import { Loader2 } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import AppLayout from "@/app/routing/AppLayout";
-import type { AdminTab } from "../types";
+import { Loader2 } from 'lucide-react';
+import AppLayout from '@/app/routing/AppLayout';
+import { Button } from '@/components/ui/button';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useAdmin } from '../hooks/useAdmin';
+import type { AdminTab } from '../types';
+import AdminCreatorsTab from './AdminCreatorsTab';
+import AdminReportsTab from './AdminReportsTab';
+import AdminTemplateTab from './AdminTemplateTab';
 
 function AdminPage() {
-  const {
-    isAdmin,
-    setActiveTab,
-    handleGoToDashboard,
-  } = useAdmin();
+  const { isAdmin, setActiveTab, handleGoToDashboard } = useAdmin();
 
   if (!isAdmin) {
     return (

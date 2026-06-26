@@ -1,13 +1,12 @@
-import { useQuery } from "@tanstack/react-query";
-import { adminService } from "../api/adminApi";
-import type { AdminCreator, AdminReport, AdminReportsQueryParams } from "../types";
+import { useQuery } from '@tanstack/react-query';
+import { adminService } from '../api/adminApi';
+import type { AdminCreator, AdminReport, AdminReportsQueryParams } from '../types';
 
 export const adminQueryKeys = {
-  all: ["admin"] as const,
-  reports: (params: AdminReportsQueryParams) =>
-    [...adminQueryKeys.all, "reports", params] as const,
-  creators: () => [...adminQueryKeys.all, "creators"] as const,
-  template: () => [...adminQueryKeys.all, "template"] as const,
+  all: ['admin'] as const,
+  reports: (params: AdminReportsQueryParams) => [...adminQueryKeys.all, 'reports', params] as const,
+  creators: () => [...adminQueryKeys.all, 'creators'] as const,
+  template: () => [...adminQueryKeys.all, 'template'] as const,
 };
 
 export function useAdminReportsQuery(params: AdminReportsQueryParams) {

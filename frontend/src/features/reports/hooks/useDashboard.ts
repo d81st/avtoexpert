@@ -1,10 +1,7 @@
-import { useEffect, useState } from "react";
-import { useForm, useWatch, type UseFormRegister } from "react-hook-form";
-import {
-  useDeleteReportMutation,
-  useReportsQuery,
-} from "../model/reportQueries";
-import type { Report } from "../types";
+import { useEffect, useState } from 'react';
+import { type UseFormRegister, useForm, useWatch } from 'react-hook-form';
+import { useDeleteReportMutation, useReportsQuery } from '../model/reportQueries';
+import type { Report } from '../types';
 
 const SEARCH_DEBOUNCE_MS = 300;
 
@@ -48,14 +45,14 @@ export interface UseDashboardReturn {
 
 export function useDashboard(): UseDashboardReturn {
   const [currentPage, setCurrentPage] = useState(1);
-  const [searchQuery, setSearchQuery] = useState("");
+  const [searchQuery, setSearchQuery] = useState('');
 
   const { register, control, reset } = useForm<SearchForm>({
-    defaultValues: { search: "" },
+    defaultValues: { search: '' },
   });
 
   // Live-source of the search input. `useWatch` re-renders on every keystroke.
-  const watchedSearch = useWatch({ control, name: "search" }) ?? "";
+  const watchedSearch = useWatch({ control, name: 'search' }) ?? '';
   const trimmed = watchedSearch.trim();
 
   // Debounced commit: the trimmed input becomes the active `searchQuery`
@@ -84,13 +81,13 @@ export function useDashboard(): UseDashboardReturn {
   const pagination = reportsQuery.data?.pagination ?? null;
 
   const handleClearSearch = () => {
-    reset({ search: "" });
-    setSearchQuery("");
+    reset({ search: '' });
+    setSearchQuery('');
     setCurrentPage(1);
   };
 
   const handleDeleteReport = async (reportId: string) => {
-    if (!confirm("Удалить это заключение?")) return;
+    if (!confirm('Удалить это заключение?')) return;
     await deleteReportMutation.mutateAsync(reportId);
   };
 

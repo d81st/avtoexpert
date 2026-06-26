@@ -1,10 +1,7 @@
-import { useEffect, useState, type SyntheticEvent } from "react";
-import { createPortal } from "react-dom";
-import { Loader2 } from "lucide-react";
-import {
-  selectIsActive,
-  useGlobalLoadingStore,
-} from "@/shared/loading/useGlobalLoadingStore";
+import { Loader2 } from 'lucide-react';
+import { type SyntheticEvent, useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
+import { selectIsActive, useGlobalLoadingStore } from '@/shared/loading/useGlobalLoadingStore';
 
 /**
  * Debounce перед показом overlay. Удерживает overlay невидимым, пока активное
@@ -20,7 +17,7 @@ const SHOW_DELAY_MS = 200;
  * subtree и сохраняет интерактивность для собственных preventDefault-хендлеров
  * и live-region объявлений (AC 4.7, 4.8).
  */
-const APP_ROOT_ID = "root";
+const APP_ROOT_ID = 'root';
 
 /**
  * GlobalLoadingOverlay
@@ -87,9 +84,9 @@ export function GlobalLoadingOverlay() {
     if (!isVisible) return;
     const root = document.getElementById(APP_ROOT_ID);
     if (!root) return;
-    root.setAttribute("inert", "");
+    root.setAttribute('inert', '');
     return () => {
-      root.removeAttribute("inert");
+      root.removeAttribute('inert');
     };
   }, [isVisible]);
 
@@ -118,10 +115,7 @@ export function GlobalLoadingOverlay() {
       className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/30 backdrop-blur-[2px]"
     >
       <div className="rounded-2xl bg-white/95 px-6 py-5 shadow-xl">
-        <Loader2
-          aria-label="Загрузка"
-          className="h-8 w-8 animate-spin text-blue-600"
-        />
+        <Loader2 aria-label="Загрузка" className="h-8 w-8 animate-spin text-blue-600" />
       </div>
     </div>
   );

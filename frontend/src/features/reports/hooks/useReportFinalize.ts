@@ -1,17 +1,17 @@
-import { useEffect, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { useQueryClient } from "@tanstack/react-query";
-import type { AxiosError } from "axios";
-import { useFormStore } from "../model/useFormStore";
-import { useReportStore } from "../model/useReportStore";
-import { reportService } from "../api/reportApi";
-import { documentService } from "../api/documentApi";
-import { reportQueryKeys } from "../model/reportQueries";
+import { useQueryClient } from '@tanstack/react-query';
+import type { AxiosError } from 'axios';
+import { useEffect, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { documentService } from '../api/documentApi';
+import { reportService } from '../api/reportApi';
+import { reportQueryKeys } from '../model/reportQueries';
+import { useFormStore } from '../model/useFormStore';
+import { useReportStore } from '../model/useReportStore';
 
 const SUCCESS_COOLDOWN_MS = 5_000;
 const DEFAULT_RATE_LIMIT_COOLDOWN_S = 60;
 
-export type CooldownReason = null | "in-flight" | "success" | "rate-limit";
+export type CooldownReason = null | 'in-flight' | 'success' | 'rate-limit';
 
 interface RateLimit429Body {
   error?: string;
@@ -31,10 +31,7 @@ export interface UseReportFinalizeReturn {
   handleFinalize: () => Promise<void>;
 }
 
-function pickRetryAfterSeconds(
-  header: unknown,
-  body: unknown,
-): number {
+function pickRetryAfterSeconds(header: unknown, body: unknown): number {
   const headerNum = Number(header);
   if (Number.isFinite(headerNum) && headerNum > 0) {
     return headerNum;
@@ -48,9 +45,7 @@ function pickRetryAfterSeconds(
   return DEFAULT_RATE_LIMIT_COOLDOWN_S;
 }
 
-export function useReportFinalize({
-  reportId,
-}: UseReportFinalizeParams): UseReportFinalizeReturn {
+export function useReportFinalize({ reportId }: UseReportFinalizeParams): UseReportFinalizeReturn {
   const { step5 } = useFormStore();
   const { currentReport } = useReportStore();
   const navigate = useNavigate();
@@ -93,9 +88,7 @@ export function useReportFinalize({
   }, [cooldownUntil]);
 
   const cooldownSecondsLeft =
-    cooldownUntil !== null
-      ? Math.max(0, Math.ceil((cooldownUntil - now) / 1000))
-      : 0;
+    cooldownUntil !== null ? Math.max(0, Math.ceil((cooldownUntil - now) / 1000)) : 0;
 
   // Clean up the pending redirect timer if the component unmounts before
   // the success cooldown elapses.
@@ -115,7 +108,7 @@ export function useReportFinalize({
 
     inFlightRef.current = true;
     setIsGenerating(true);
-    setCooldownReason("in-flight");
+    setCooldownReason('in-flight');
     setGenerateError(null);
     setGenerateSuccess(false);
 
@@ -126,8 +119,7 @@ export function useReportFinalize({
 
       const result = await documentService.finalizeAndGenerate(reportId);
       const filename =
-        result.filename ||
-        `zaklyuchenie_${currentReport?.report_number || reportId}.docx`;
+        result.filename || `zaklyuchenie_${currentReport?.report_number || reportId}.docx`;
       await documentService.downloadDocument(result.download_url, filename);
 
       setGenerateSuccess(true);
@@ -135,7 +127,7 @@ export function useReportFinalize({
         queryKey: reportQueryKeys.lists(),
       });
 
-      setCooldownReason("success");
+      setCooldownReason('success');
       setCooldownUntil(Date.now() + SUCCESS_COOLDOWN_MS);
 
       if (redirectTimerRef.current !== null) {
@@ -143,24 +135,20 @@ export function useReportFinalize({
       }
       redirectTimerRef.current = setTimeout(() => {
         redirectTimerRef.current = null;
-        navigate("/", { state: { justGenerated: true } });
+        navigate('/', { state: { justGenerated: true } });
       }, SUCCESS_COOLDOWN_MS);
     } catch (err) {
       const axiosErr = err as AxiosError<RateLimit429Body>;
       if (axiosErr?.response?.status === 429) {
         const seconds = pickRetryAfterSeconds(
-          axiosErr.response.headers?.["retry-after"],
+          axiosErr.response.headers?.['retry-after'],
           axiosErr.response.data?.retry_after_seconds,
         );
-        setCooldownReason("rate-limit");
+        setCooldownReason('rate-limit');
         setCooldownUntil(Date.now() + seconds * 1000);
-        setGenerateError(
-          `Слишком частые запросы. Попробуйте через ${seconds} с`,
-        );
+        setGenerateError(`Слишком частые запросы. Попробуйте через ${seconds} с`);
       } else {
-        setGenerateError(
-          (err as Error).message || "Ошибка генерации документа",
-        );
+        setGenerateError((err as Error).message || 'Ошибка генерации документа');
       }
     } finally {
       inFlightRef.current = false;

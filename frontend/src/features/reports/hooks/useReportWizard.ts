@@ -1,27 +1,18 @@
-import { useEffect } from "react";
-import { useNavigate } from "react-router-dom";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import type { UseQueryResult, UseMutationResult } from "@tanstack/react-query";
-import { useFormStore } from "../model/useFormStore";
+import type { UseMutationResult, UseQueryResult } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { reportService } from '../api/reportApi';
 import {
-  useReportDetailQuery,
   reportQueryKeys,
-} from "../model/reportQueries";
-import {
+  useReportDetailQuery,
   useUpdateStep2Mutation,
   useUpdateStep3Mutation,
   useUpdateStep4Mutation,
   useUpdateStep5Mutation,
-} from "../model/reportQueries";
-import { reportService } from "../api/reportApi";
-import type {
-  Report,
-  Step1Data,
-  Step2Data,
-  Step3Data,
-  Step4Data,
-  Step5Data,
-} from "../types";
+} from '../model/reportQueries';
+import { useFormStore } from '../model/useFormStore';
+import type { Report, Step1Data, Step2Data, Step3Data, Step4Data, Step5Data } from '../types';
 
 interface UseReportWizardParams {
   id?: string;
@@ -78,10 +69,10 @@ export function useReportWizard({ id }: UseReportWizardParams): UseReportWizardR
   });
 
   // Separate mutations for each step
-  const saveStep2Mutation = useUpdateStep2Mutation(id ?? "");
-  const saveStep3Mutation = useUpdateStep3Mutation(id ?? "");
-  const saveStep4Mutation = useUpdateStep4Mutation(id ?? "");
-  const saveStep5Mutation = useUpdateStep5Mutation(id ?? "");
+  const saveStep2Mutation = useUpdateStep2Mutation(id ?? '');
+  const saveStep3Mutation = useUpdateStep3Mutation(id ?? '');
+  const saveStep4Mutation = useUpdateStep4Mutation(id ?? '');
+  const saveStep5Mutation = useUpdateStep5Mutation(id ?? '');
 
   // Navigation without API calls
   const handleNext = () => {

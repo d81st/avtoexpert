@@ -8,6 +8,27 @@
       "when": 1781344289891,
       "tag": "0000_swift_silk_fever",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1782406520250,
+      "tag": "0001_platform_improvements_mvp",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1782408104635,
+      "tag": "0002_photo_captions_and_position",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1782471421737,
+      "tag": "0003_remove_audit_events",
+      "breakpoints": true
     }
   ]
 }

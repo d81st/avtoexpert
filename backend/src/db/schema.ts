@@ -1,12 +1,24 @@
 import {
   bigint,
+  bigserial,
   boolean,
+  index,
   integer,
   pgTable,
   timestamp,
+  uniqueIndex,
   uuid,
   varchar,
 } from 'drizzle-orm/pg-core';
+
+// NOTE (R8.9): the `photos_report_position_unique` constraint on
+// (report_id, position) is declared below as a logical `uniqueIndex` for
+// documentation only. The physical constraint is created by hand in migration
+// `0002_photo_captions_and_position.sql` as `DEFERRABLE INITIALLY DEFERRED` so
+// the reorder transaction (design §3.8) can transiently hold duplicate
+// (report_id, position) pairs between its shift and set steps. Drizzle's
+// `unique()`/`uniqueIndex()` helpers emit a non-deferrable constraint, so the
+// migration — not this declaration — is authoritative for that constraint.
 
 // Создатели (пользователи системы)
 export const creators = pgTable('creators', {
@@ -80,6 +92,9 @@ export const reports = pgTable('reports', {
   // Шаг 5 (метаданные)
   grandTotal: bigint('grand_total', { mode: 'number' }),
 
+  // Optimistic concurrency control for autosave (R2.12)
+  version: integer('version').notNull().default(0),
+
   updatedAt: timestamp('updated_at').defaultNow(),
   createdAt: timestamp('created_at').defaultNow(),
 });
@@ -130,11 +145,56 @@ export const materials = pgTable('materials', {
 });
 
 // Фотографии
-export const photos = pgTable('photos', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  reportId: uuid('report_id')
-    .references(() => reports.id, { onDelete: 'cascade' })
-    .notNull(),
-  filePath: varchar('file_path', { length: 500 }),
-  createdAt: timestamp('created_at').defaultNow(),
-});
+export const photos = pgTable(
+  'photos',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    reportId: uuid('report_id')
+      .references(() => reports.id, { onDelete: 'cascade' })
+      .notNull(),
+    filePath: varchar('file_path', { length: 500 }),
+    // Immutable upload order within a reportId (R4.6). Used for deterministic
+    // listing and as the audit/forensic record of the upload sequence.
+    sequenceNumber: integer('sequence_number').notNull(),
+    originalName: varchar('original_name', { length: 255 }),
+    byteSize: integer('byte_size').notNull(),
+    mimeType: varchar('mime_type', { length: 64 }).notNull(),
+    // User-controlled photo metadata (R8.1, R8.9): nullable caption, ≤200 chars.
+    caption: varchar('caption', { length: 200 }),
+    // User-controlled display order in the generated .docx (R8.2, R8.9).
+    // Independent of sequenceNumber (immutable upload order); mutated by the
+    // PATCH … position endpoint (design §3.8).
+    position: integer('position').notNull(),
+    createdAt: timestamp('created_at').defaultNow(),
+  },
+  (t) => ({
+    bySeq: uniqueIndex('photos_report_seq_uniq').on(
+      t.reportId,
+      t.sequenceNumber,
+    ),
+    // R8 unique constraint on display-order. Declared here for documentation
+    // only; created DEFERRABLE INITIALLY DEFERRED by migration
+    // `0002_photo_captions_and_position.sql` (see top-of-file note).
+    byPosition: uniqueIndex('photos_report_position_unique').on(
+      t.reportId,
+      t.position,
+    ),
+  }),
+);
+
+// Неудачные попытки аутентификации (R6.10, R6.12)
+export const authFailures = pgTable(
+  'auth_failures',
+  {
+    id: bigserial('id', { mode: 'number' }).primaryKey(),
+    email: varchar('email', { length: 255 }),
+    clientIp: varchar('client_ip', { length: 64 }).notNull(),
+    userAgent: varchar('user_agent', { length: 512 }),
+    createdAt: timestamp('created_at').notNull().defaultNow(),
+  },
+  (t) => ({
+    byIpTime: index('auth_failures_ip_time').on(t.clientIp, t.createdAt),
+    byEmailTime: index('auth_failures_email_time').on(t.email, t.createdAt),
+  }),
+);
+

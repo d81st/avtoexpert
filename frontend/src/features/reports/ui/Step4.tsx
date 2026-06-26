@@ -1,33 +1,28 @@
-import { useMemo } from 'react';
-import { useForm, useWatch, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useFormStore } from '../model/useFormStore';
-import { useValidationSync } from '../hooks/useValidationSync';
-import { useDebouncedStoreSync } from '../hooks/useDebouncedStoreSync';
-import {
-  COMPLEXITY_OPTIONS,
-  PART_TYPES,
-  REPAIR_PART_NAMES,
-} from '@/constants/reference';
-import { calcRepairWorkPrice } from '../lib/calculations';
-import { step4Schema, type Step4FormData } from '@/schemas/step4.schema';
+import { memo } from 'react';
+import { type Control, useFieldArray, useForm, useWatch } from 'react-hook-form';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import {
   Form,
+  FormControl,
   FormField,
   FormItem,
   FormLabel,
-  FormControl,
   FormMessage,
 } from '@/components/ui/form';
 import {
   Select,
-  SelectTrigger,
-  SelectValue,
   SelectContent,
   SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from '@/components/ui/select';
+import { COMPLEXITY_OPTIONS, PART_TYPES, REPAIR_PART_NAMES } from '@/constants/reference';
+import { type Step4FormData, step4Schema } from '@/schemas/step4.schema';
+import { useValidationSync } from '../hooks/useValidationSync';
+import { calcRepairWorkPrice } from '../lib/calculations';
+import { useFormStore } from '../model/useFormStore';
+import { FormStoreSync, IsolatedNumberField, IsolatedTextField } from './fields/isolated-fields';
 
 const EMPTY_STEP4: Step4FormData = {
   hourly_rate: 0,
@@ -36,6 +31,64 @@ const EMPTY_STEP4: Step4FormData = {
   spare_parts: [],
   materials: [],
 };
+
+/**
+ * Cost totals, isolated into a memoized subtree subscribed only to the four
+ * collection arrays. Editing a single row's price re-renders this summary but not
+ * the other rows or the rest of the step (R1.3).
+ */
+const Step4Totals = memo(function Step4Totals({ control }: { control: Control<Step4FormData> }) {
+  const [repairWorks, paintWorks, spareParts, materials] = useWatch({
+    control,
+    name: ['repair_works', 'paint_works', 'spare_parts', 'materials'],
+  });
+
+  const hasRows =
+    (repairWorks?.length ?? 0) +
+      (paintWorks?.length ?? 0) +
+      (spareParts?.length ?? 0) +
+      (materials?.length ?? 0) >
+    0;
+
+  if (!hasRows) {
+    return null;
+  }
+
+  const totalRepair = (repairWorks ?? []).reduce((sum, work) => sum + (work?.price ?? 0), 0);
+  const totalPaint = (paintWorks ?? []).reduce(
+    (sum, work) => sum + (work?.paint_price ?? 0) + (work?.polish_price ?? 0),
+    0,
+  );
+  const totalSpare = (spareParts ?? []).reduce(
+    (sum, part) => sum + (part?.qty ?? 0) * (part?.price ?? 0),
+    0,
+  );
+  const totalMat = (materials ?? []).reduce(
+    (sum, mat) => sum + (mat?.qty ?? 0) * (mat?.price ?? 0),
+    0,
+  );
+
+  return (
+    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+      <div>
+        <span className="text-gray-600">Ремонт:</span>{' '}
+        <strong>{totalRepair.toLocaleString('ru-RU')}</strong>
+      </div>
+      <div>
+        <span className="text-gray-600">Покраска:</span>{' '}
+        <strong>{totalPaint.toLocaleString('ru-RU')}</strong>
+      </div>
+      <div>
+        <span className="text-gray-600">Запчасти:</span>{' '}
+        <strong>{totalSpare.toLocaleString('ru-RU')}</strong>
+      </div>
+      <div>
+        <span className="text-gray-600">Материалы:</span>{' '}
+        <strong>{totalMat.toLocaleString('ru-RU')}</strong>
+      </div>
+    </div>
+  );
+});
 
 function Step4({ onValidationChange }: { onValidationChange: (isValid: boolean) => void }) {
   const step4Data = useFormStore((s) => s.step4);
@@ -47,34 +100,23 @@ function Step4({ onValidationChange }: { onValidationChange: (isValid: boolean) 
     defaultValues: step4Data ?? EMPTY_STEP4,
   });
 
-  const { control, setValue, getValues, formState: { isValid } } = form;
+  const {
+    control,
+    setValue,
+    getValues,
+    formState: { isValid },
+  } = form;
 
   const repairWorks = useFieldArray({ control, name: 'repair_works' });
   const paintWorks = useFieldArray({ control, name: 'paint_works' });
   const spareParts = useFieldArray({ control, name: 'spare_parts' });
   const materials = useFieldArray({ control, name: 'materials' });
 
-  // Debounced sync to Zustand store (replaces useWatch + useEffect pattern)
-  useDebouncedStoreSync(control, setStep4, 300);
-
-  // Granular useWatch calls for UI rendering only
-  const hourlyRate = useWatch({ control, name: 'hourly_rate' }) ?? 0;
-  const watchedArrays = useWatch({ control, name: ['repair_works', 'paint_works', 'spare_parts', 'materials'] });
-
   // Sync validation state via formState.isValid subscription
   useValidationSync(isValid, onValidationChange);
 
-  const totals = useMemo(() => {
-    const [rw, pw, sp, mt] = watchedArrays;
-
-    return {
-      totalRepair: (rw ?? []).reduce((sum, work) => sum + (work?.price ?? 0), 0),
-      totalPaint: (pw ?? []).reduce((sum, work) => sum + (work?.paint_price ?? 0) + (work?.polish_price ?? 0), 0),
-      totalSpare: (sp ?? []).reduce((sum, part) => sum + ((part?.qty ?? 0) * (part?.price ?? 0)), 0),
-      totalMat: (mt ?? []).reduce((sum, mat) => sum + ((mat?.qty ?? 0) * (mat?.price ?? 0)), 0),
-    };
-  }, [watchedArrays]);
-
+  // When the hourly rate changes, recompute every repair work price. `getValues`
+  // reads the latest array without subscribing this component to row edits.
   const recalcRepairPrices = (newRate: number) => {
     const currentWorks = getValues('repair_works');
     currentWorks.forEach((work, index) => {
@@ -85,6 +127,10 @@ function Step4({ onValidationChange }: { onValidationChange: (isValid: boolean) 
 
   return (
     <Form {...form}>
+      {/* Isolated, debounced Zustand sync — keeps the whole-form watch off this
+          component's render path (R1.3). */}
+      <FormStoreSync control={control} setter={setStep4} />
+
       <div className="space-y-8">
         <div>
           <h2 className="text-2xl font-bold text-gray-800">Шаг 4: Tamirlash</h2>
@@ -94,28 +140,15 @@ function Step4({ onValidationChange }: { onValidationChange: (isValid: boolean) 
         </div>
 
         <section>
-          <h3 className="text-lg font-semibold text-gray-800 mb-4 pb-2 border-b">4.1 — Нормо-час</h3>
-          <FormField
-            control={control}
+          <h3 className="text-lg font-semibold text-gray-800 mb-4 pb-2 border-b">
+            4.1 — Нормо-час
+          </h3>
+          <IsolatedNumberField
             name="hourly_rate"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Нормо-час (сум) / Usta haqqi <span className="text-red-500">*</span></FormLabel>
-                <FormControl>
-                  <Input
-                    type="number"
-                    value={field.value || ''}
-                    onChange={(e) => {
-                      const val = parseFloat(e.target.value) || 0;
-                      field.onChange(val);
-                      recalcRepairPrices(val);
-                    }}
-                    onBlur={field.onBlur}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
+            label="Нормо-час (сум) / Usta haqqi"
+            required
+            parse="float"
+            onValueChange={(value) => recalcRepairPrices(value ?? 0)}
           />
         </section>
 
@@ -124,12 +157,14 @@ function Step4({ onValidationChange }: { onValidationChange: (isValid: boolean) 
             <h3 className="text-lg font-semibold text-gray-800">4.2 — Ремонтные работы</h3>
             <Button
               type="button"
-              onClick={() => repairWorks.append({
-                part_name: '',
-                type: "Bo'luvchi",
-                complexity: 'BT-1',
-                price: calcRepairWorkPrice(hourlyRate, 'BT-1'),
-              })}
+              onClick={() =>
+                repairWorks.append({
+                  part_name: '',
+                  type: "Bo'luvchi",
+                  complexity: 'BT-1',
+                  price: calcRepairWorkPrice(getValues('hourly_rate') ?? 0, 'BT-1'),
+                })
+              }
               size="sm"
             >
               + Добавить
@@ -143,30 +178,17 @@ function Step4({ onValidationChange }: { onValidationChange: (isValid: boolean) 
           {repairWorks.fields.map((field, index) => (
             <div key={field.id} className="border border-gray-200 rounded-lg p-4 mb-3 bg-gray-50">
               <div className="grid grid-cols-1 md:grid-cols-5 gap-3 items-end">
-                <FormField
-                  control={control}
+                <IsolatedTextField
                   name={`repair_works.${index}.part_name`}
-                  render={({ field: f }) => (
-                    <FormItem>
-                      <FormLabel>Деталь / Detal</FormLabel>
-                      <FormControl>
-                        <div>
-                          <Input
-                            list={`repair-parts-${index}`}
-                            value={f.value}
-                            onChange={f.onChange}
-                            onBlur={f.onBlur}
-                          />
-                          <datalist id={`repair-parts-${index}`}>
-                            {REPAIR_PART_NAMES.map((name) => (
-                              <option key={name} value={name} />
-                            ))}
-                          </datalist>
-                        </div>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
+                  label="Деталь / Detal"
+                  list={`repair-parts-${index}`}
+                  afterInput={
+                    <datalist id={`repair-parts-${index}`}>
+                      {REPAIR_PART_NAMES.map((name) => (
+                        <option key={name} value={name} />
+                      ))}
+                    </datalist>
+                  }
                 />
                 <FormField
                   control={control}
@@ -174,10 +196,7 @@ function Step4({ onValidationChange }: { onValidationChange: (isValid: boolean) 
                   render={({ field: f }) => (
                     <FormItem>
                       <FormLabel>Тип / Turi</FormLabel>
-                      <Select
-                        onValueChange={f.onChange}
-                        value={f.value}
-                      >
+                      <Select onValueChange={f.onChange} value={f.value}>
                         <FormControl>
                           <SelectTrigger>
                             <SelectValue placeholder="Выберите тип" />
@@ -185,7 +204,9 @@ function Step4({ onValidationChange }: { onValidationChange: (isValid: boolean) 
                         </FormControl>
                         <SelectContent>
                           {PART_TYPES.map((t) => (
-                            <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
+                            <SelectItem key={t.value} value={t.value}>
+                              {t.label}
+                            </SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
@@ -202,7 +223,7 @@ function Step4({ onValidationChange }: { onValidationChange: (isValid: boolean) 
                       <Select
                         onValueChange={(val) => {
                           complexityField.onChange(val);
-                          const newPrice = calcRepairWorkPrice(hourlyRate, val);
+                          const newPrice = calcRepairWorkPrice(getValues('hourly_rate') ?? 0, val);
                           setValue(`repair_works.${index}.price`, newPrice);
                         }}
                         value={complexityField.value}
@@ -214,7 +235,9 @@ function Step4({ onValidationChange }: { onValidationChange: (isValid: boolean) 
                         </FormControl>
                         <SelectContent>
                           {COMPLEXITY_OPTIONS.map((c) => (
-                            <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
+                            <SelectItem key={c.value} value={c.value}>
+                              {c.label}
+                            </SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
@@ -222,23 +245,11 @@ function Step4({ onValidationChange }: { onValidationChange: (isValid: boolean) 
                     </FormItem>
                   )}
                 />
-                <FormField
-                  control={control}
+                <IsolatedNumberField
                   name={`repair_works.${index}.price`}
-                  render={({ field: f }) => (
-                    <FormItem>
-                      <FormLabel>Стоимость / Narxi</FormLabel>
-                      <FormControl>
-                        <Input
-                          type="number"
-                          value={f.value}
-                          readOnly
-                          className="bg-gray-100"
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
+                  label="Стоимость / Narxi"
+                  readOnly
+                  inputClassName="bg-gray-100"
                 />
                 <Button
                   type="button"
@@ -267,60 +278,18 @@ function Step4({ onValidationChange }: { onValidationChange: (isValid: boolean) 
           {paintWorks.fields.map((field, index) => (
             <div key={field.id} className="border border-gray-200 rounded-lg p-4 mb-3 bg-gray-50">
               <div className="grid grid-cols-1 md:grid-cols-4 gap-3 items-end">
-                <FormField
-                  control={control}
-                  name={`paint_works.${index}.part_name`}
-                  render={({ field: f }) => (
-                    <FormItem>
-                      <FormLabel>Деталь / Detal</FormLabel>
-                      <FormControl>
-                        <Input
-                          value={f.value}
-                          onChange={f.onChange}
-                          onBlur={f.onBlur}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={control}
+                <IsolatedTextField name={`paint_works.${index}.part_name`} label="Деталь / Detal" />
+                <IsolatedNumberField
                   name={`paint_works.${index}.paint_price`}
-                  render={({ field: f }) => (
-                    <FormItem>
-                      <FormLabel>Покраска / Bo'yoq</FormLabel>
-                      <FormControl>
-                        <Input
-                          type="number"
-                          value={f.value || ''}
-                          onChange={(e) => f.onChange(parseFloat(e.target.value) || 0)}
-                          onBlur={f.onBlur}
-                          min={0}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
+                  label="Покраска / Bo'yoq"
+                  parse="float"
+                  min={0}
                 />
-                <FormField
-                  control={control}
+                <IsolatedNumberField
                   name={`paint_works.${index}.polish_price`}
-                  render={({ field: f }) => (
-                    <FormItem>
-                      <FormLabel>Полировка / Politura</FormLabel>
-                      <FormControl>
-                        <Input
-                          type="number"
-                          value={f.value || ''}
-                          onChange={(e) => f.onChange(parseFloat(e.target.value) || 0)}
-                          onBlur={f.onBlur}
-                          min={0}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
+                  label="Полировка / Politura"
+                  parse="float"
+                  min={0}
                 />
                 <Button
                   type="button"
@@ -337,7 +306,9 @@ function Step4({ onValidationChange }: { onValidationChange: (isValid: boolean) 
 
         <section>
           <div className="flex justify-between items-center mb-4 pb-2 border-b">
-            <h3 className="text-lg font-semibold text-gray-800">4.4 — Запчасти / Ehtiyot qismlar</h3>
+            <h3 className="text-lg font-semibold text-gray-800">
+              4.4 — Запчасти / Ehtiyot qismlar
+            </h3>
             <Button
               type="button"
               onClick={() => spareParts.append({ name: '', qty: 1, price: 0 })}
@@ -349,60 +320,18 @@ function Step4({ onValidationChange }: { onValidationChange: (isValid: boolean) 
           {spareParts.fields.map((field, index) => (
             <div key={field.id} className="border border-gray-200 rounded-lg p-4 mb-3 bg-gray-50">
               <div className="grid grid-cols-1 md:grid-cols-4 gap-3 items-end">
-                <FormField
-                  control={control}
-                  name={`spare_parts.${index}.name`}
-                  render={({ field: f }) => (
-                    <FormItem>
-                      <FormLabel>Название / Nom</FormLabel>
-                      <FormControl>
-                        <Input
-                          value={f.value}
-                          onChange={f.onChange}
-                          onBlur={f.onBlur}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={control}
+                <IsolatedTextField name={`spare_parts.${index}.name`} label="Название / Nom" />
+                <IsolatedNumberField
                   name={`spare_parts.${index}.qty`}
-                  render={({ field: f }) => (
-                    <FormItem>
-                      <FormLabel>Кол-во / Miqdor</FormLabel>
-                      <FormControl>
-                        <Input
-                          type="number"
-                          value={f.value}
-                          onChange={(e) => f.onChange(parseInt(e.target.value) || 1)}
-                          onBlur={f.onBlur}
-                          min={1}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
+                  label="Кол-во / Miqdor"
+                  min={1}
+                  emptyValue={1}
                 />
-                <FormField
-                  control={control}
+                <IsolatedNumberField
                   name={`spare_parts.${index}.price`}
-                  render={({ field: f }) => (
-                    <FormItem>
-                      <FormLabel>Цена / Narxi</FormLabel>
-                      <FormControl>
-                        <Input
-                          type="number"
-                          value={f.value || ''}
-                          onChange={(e) => f.onChange(parseFloat(e.target.value) || 0)}
-                          onBlur={f.onBlur}
-                          min={0}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
+                  label="Цена / Narxi"
+                  parse="float"
+                  min={0}
                 />
                 <Button
                   type="button"
@@ -431,60 +360,18 @@ function Step4({ onValidationChange }: { onValidationChange: (isValid: boolean) 
           {materials.fields.map((field, index) => (
             <div key={field.id} className="border border-gray-200 rounded-lg p-4 mb-3 bg-gray-50">
               <div className="grid grid-cols-1 md:grid-cols-4 gap-3 items-end">
-                <FormField
-                  control={control}
-                  name={`materials.${index}.name`}
-                  render={({ field: f }) => (
-                    <FormItem>
-                      <FormLabel>Название / Nom</FormLabel>
-                      <FormControl>
-                        <Input
-                          value={f.value}
-                          onChange={f.onChange}
-                          onBlur={f.onBlur}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={control}
+                <IsolatedTextField name={`materials.${index}.name`} label="Название / Nom" />
+                <IsolatedNumberField
                   name={`materials.${index}.qty`}
-                  render={({ field: f }) => (
-                    <FormItem>
-                      <FormLabel>Кол-во / Miqdor</FormLabel>
-                      <FormControl>
-                        <Input
-                          type="number"
-                          value={f.value}
-                          onChange={(e) => f.onChange(parseInt(e.target.value) || 1)}
-                          onBlur={f.onBlur}
-                          min={1}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
+                  label="Кол-во / Miqdor"
+                  min={1}
+                  emptyValue={1}
                 />
-                <FormField
-                  control={control}
+                <IsolatedNumberField
                   name={`materials.${index}.price`}
-                  render={({ field: f }) => (
-                    <FormItem>
-                      <FormLabel>Цена / Narxi</FormLabel>
-                      <FormControl>
-                        <Input
-                          type="number"
-                          value={f.value || ''}
-                          onChange={(e) => f.onChange(parseFloat(e.target.value) || 0)}
-                          onBlur={f.onBlur}
-                          min={0}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
+                  label="Цена / Narxi"
+                  parse="float"
+                  min={0}
                 />
                 <Button
                   type="button"
@@ -499,14 +386,7 @@ function Step4({ onValidationChange }: { onValidationChange: (isValid: boolean) 
           ))}
         </section>
 
-        {(repairWorks.fields.length > 0 || paintWorks.fields.length > 0 || spareParts.fields.length > 0 || materials.fields.length > 0) && (
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-            <div><span className="text-gray-600">Ремонт:</span> <strong>{totals.totalRepair.toLocaleString('ru-RU')}</strong></div>
-            <div><span className="text-gray-600">Покраска:</span> <strong>{totals.totalPaint.toLocaleString('ru-RU')}</strong></div>
-            <div><span className="text-gray-600">Запчасти:</span> <strong>{totals.totalSpare.toLocaleString('ru-RU')}</strong></div>
-            <div><span className="text-gray-600">Материалы:</span> <strong>{totals.totalMat.toLocaleString('ru-RU')}</strong></div>
-          </div>
-        )}
+        <Step4Totals control={control} />
       </div>
     </Form>
   );

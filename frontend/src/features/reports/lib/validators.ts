@@ -4,12 +4,7 @@ import type { Step1Data, Step2Data, Step3Data, Step4Data, Step5Data } from '../t
 export const validateStep1 = (data: Step1Data | null | undefined): boolean => {
   if (!data) return false;
 
-  return Boolean(
-    data.expert_id &&
-      data.report_number &&
-      data.report_date &&
-      data.application_date,
-  );
+  return Boolean(data.expert_id && data.report_number && data.report_date && data.application_date);
 };
 
 export const validateStep2 = (data: Step2Data | null | undefined): boolean => {
@@ -42,18 +37,14 @@ export const validateStep3 = (data: Step3Data | null | undefined): boolean => {
       data.analog2_price > 0 &&
       data.analog3_mileage > 0 &&
       data.analog3_price > 0 &&
-      DEPRECIATION_OPTIONS.includes(
-        data.depreciation_pct as (typeof DEPRECIATION_OPTIONS)[number],
-      ),
+      DEPRECIATION_OPTIONS.includes(data.depreciation_pct as (typeof DEPRECIATION_OPTIONS)[number]),
   );
 };
 
 export const validateStep4 = (data: Step4Data | null | undefined): boolean => {
   if (!data) return false;
 
-  const hasValidWork = data.repair_works.some(
-    (work) => work.part_name.trim().length > 0,
-  );
+  const hasValidWork = data.repair_works.some((work) => work.part_name.trim().length > 0);
 
   return data.hourly_rate > 0 && hasValidWork;
 };

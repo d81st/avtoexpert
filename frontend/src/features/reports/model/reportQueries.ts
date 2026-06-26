@@ -1,21 +1,14 @@
-import {
-  keepPreviousData,
-  useMutation,
-  useQuery,
-  useQueryClient,
-} from "@tanstack/react-query";
-import { reportService, type ReportsQueryParams } from "../api/reportApi";
-import { photoService } from "../api/photoApi";
-import type { Step2Data, Step3Data, Step4Data, Step5Data } from "../types";
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { photoService } from '../api/photoApi';
+import { type ReportsQueryParams, reportService } from '../api/reportApi';
+import type { Step2Data, Step3Data, Step4Data, Step5Data } from '../types';
 
 export const reportQueryKeys = {
-  all: ["reports"] as const,
-  lists: () => [...reportQueryKeys.all, "list"] as const,
-  list: (params: ReportsQueryParams) =>
-    [...reportQueryKeys.lists(), params] as const,
-  detail: (id: string) => [...reportQueryKeys.all, "detail", id] as const,
-  photos: (reportId: string) =>
-    [...reportQueryKeys.all, "photos", reportId] as const,
+  all: ['reports'] as const,
+  lists: () => [...reportQueryKeys.all, 'list'] as const,
+  list: (params: ReportsQueryParams) => [...reportQueryKeys.lists(), params] as const,
+  detail: (id: string) => [...reportQueryKeys.all, 'detail', id] as const,
+  photos: (reportId: string) => [...reportQueryKeys.all, 'photos', reportId] as const,
 };
 
 export function useReportsQuery(params: ReportsQueryParams) {
@@ -94,7 +87,6 @@ export function useDeleteReportMutation() {
   });
 }
 
-
 export function usePhotosQuery(reportId: string | undefined) {
   return useQuery({
     queryKey: reportQueryKeys.photos(reportId!),
@@ -120,8 +112,7 @@ export function useDeletePhotoMutation(reportId: string) {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (photoId: string) =>
-      photoService.deletePhoto(reportId, photoId),
+    mutationFn: (photoId: string) => photoService.deletePhoto(reportId, photoId),
     onSuccess: () => {
       void queryClient.invalidateQueries({
         queryKey: reportQueryKeys.photos(reportId),

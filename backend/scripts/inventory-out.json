@@ -1,0 +1,30 @@
+{
+  "template": "original_example.docx",
+  "sizeBytes": 1251091,
+  "partsScanned": [
+    "word/document.xml",
+    "word/footer1.xml"
+  ],
+  "counts": {
+    "{#photos}": 1,
+    "{%image}": 1,
+    "{/photos}": 1,
+    "{caption}": 1
+  },
+  "classified": {
+    "loopOpen": [
+      "{#photos}"
+    ],
+    "loopClose": [
+      "{/photos}"
+    ],
+    "rawImageTags": [
+      "{%image}"
+    ],
+    "invertedSections": [],
+    "scalars": [
+      "{caption}"
+    ],
+    "legacyPhotoSlots": "none"
+  }
+}

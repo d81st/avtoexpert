@@ -1,15 +1,15 @@
 import type {
+  Material,
+  PaintWork,
+  RepairWork,
   Report,
+  ReportPhoto,
+  SparePart,
   Step1Data,
   Step2Data,
   Step3Data,
   Step4Data,
   Step5Data,
-  RepairWork,
-  PaintWork,
-  SparePart,
-  Material,
-  ReportPhoto,
 } from '../types';
 
 function field<T>(obj: Record<string, unknown>, snake: string, camel: string): T | undefined {
@@ -45,7 +45,12 @@ export function mapReportToStep2(report: Record<string, unknown>): Step2Data | n
     tech_passport: field<string>(report, 'tech_passport', 'techPassport') || '',
     tech_passport_place: field<string>(report, 'tech_passport_place', 'techPassportPlace'),
     mileage: field<number>(report, 'mileage', 'mileage') || 0,
-    odometer_status: (field<string>(report, 'odometer_status', 'odometerStatus') as Step2Data['odometer_status']) || 'Исправен',
+    odometer_status:
+      (field<string>(
+        report,
+        'odometer_status',
+        'odometerStatus',
+      ) as Step2Data['odometer_status']) || 'Исправен',
     mileage_by_method: field<number>(report, 'mileage_by_method', 'mileageByMethod'),
     vin_code: field<string>(report, 'vin_code', 'vinCode') || '',
     engine_number: field<string>(report, 'engine_number', 'engineNumber'),
@@ -60,7 +65,12 @@ export function mapReportToStep3(report: Record<string, unknown>): Step3Data | n
   if (!analog1Price) return null;
 
   return {
-    production_status: (field<string>(report, 'production_status', 'productionStatus') as Step3Data['production_status']) || 'В производстве',
+    production_status:
+      (field<string>(
+        report,
+        'production_status',
+        'productionStatus',
+      ) as Step3Data['production_status']) || 'В производстве',
     analog1_mileage: field<number>(report, 'analog1_mileage', 'analog1Mileage') || 0,
     analog1_price: analog1Price,
     analog2_mileage: field<number>(report, 'analog2_mileage', 'analog2Mileage') || 0,
@@ -76,7 +86,8 @@ function mapRepairWork(raw: Record<string, unknown>): RepairWork {
   return {
     part_name: field<string>(raw, 'part_name', 'partName') || '',
     type: (field<string>(raw, 'type', 'partType') as RepairWork['type']) || "Bo'luvchi",
-    complexity: (field<string>(raw, 'complexity', 'complexity') || 'BT-1') as RepairWork['complexity'],
+    complexity: (field<string>(raw, 'complexity', 'complexity') ||
+      'BT-1') as RepairWork['complexity'],
     price: field<number>(raw, 'price', 'price') || 0,
   };
 }
@@ -109,10 +120,14 @@ export function mapReportToStep4(report: Record<string, unknown>): Step4Data | n
   const hourlyRate = field<number>(report, 'hourly_rate', 'hourlyRate');
   if (!hourlyRate) return null;
 
-  const repairWorks = (report.repair_works as Record<string, unknown>[] | undefined)?.map(mapRepairWork) || [];
-  const paintWorks = (report.paint_works as Record<string, unknown>[] | undefined)?.map(mapPaintWork) || [];
-  const spareParts = (report.spare_parts as Record<string, unknown>[] | undefined)?.map(mapSparePart) || [];
-  const materials = (report.materials as Record<string, unknown>[] | undefined)?.map(mapMaterial) || [];
+  const repairWorks =
+    (report.repair_works as Record<string, unknown>[] | undefined)?.map(mapRepairWork) || [];
+  const paintWorks =
+    (report.paint_works as Record<string, unknown>[] | undefined)?.map(mapPaintWork) || [];
+  const spareParts =
+    (report.spare_parts as Record<string, unknown>[] | undefined)?.map(mapSparePart) || [];
+  const materials =
+    (report.materials as Record<string, unknown>[] | undefined)?.map(mapMaterial) || [];
 
   return {
     hourly_rate: hourlyRate,

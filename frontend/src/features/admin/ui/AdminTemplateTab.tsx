@@ -1,14 +1,13 @@
-import { useAdminTemplateQuery } from "../model/adminQueries";
-import { Loader2 } from "lucide-react";
-import { AppAlert } from "@/components/ui/app-alert";
-import { Card, CardContent } from "@/components/ui/card";
-import { formatDate } from "@/shared/lib/formatters";
+import { Loader2 } from 'lucide-react';
+import { AppAlert } from '@/components/ui/app-alert';
+import { Card, CardContent } from '@/components/ui/card';
+import { formatDate } from '@/shared/lib/formatters';
+import { useAdminTemplateQuery } from '../model/adminQueries';
 
 export default function AdminTemplateTab() {
   const templateQuery = useAdminTemplateQuery();
   const templateInfo = templateQuery.data;
-  const error =
-    templateQuery.error instanceof Error ? templateQuery.error.message : null;
+  const error = templateQuery.error instanceof Error ? templateQuery.error.message : null;
 
   if (templateQuery.isLoading) {
     return (
@@ -20,13 +19,7 @@ export default function AdminTemplateTab() {
   }
 
   if (error) {
-    return (
-      <AppAlert
-        type="error"
-        message={error}
-        onClose={() => void templateQuery.refetch()}
-      />
-    );
+    return <AppAlert type="error" message={error} onClose={() => void templateQuery.refetch()} />;
   }
 
   return (
@@ -48,15 +41,12 @@ export default function AdminTemplateTab() {
               </div>
             </div>
             <p className="text-sm text-gray-600 mt-4">
-              Для обновления шаблона обратитесь к администратору сервера.
-              Загрузите новый файл expertise.docx в папку templates на сервере.
+              Для обновления шаблона обратитесь к администратору сервера. Загрузите новый файл
+              expertise.docx в папку templates на сервере.
             </p>
           </div>
         ) : (
-          <AppAlert
-            type="error"
-            message="Шаблон не найден. Обратитесь к администратору."
-          />
+          <AppAlert type="error" message="Шаблон не найден. Обратитесь к администратору." />
         )}
       </CardContent>
     </Card>

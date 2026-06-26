@@ -1,0 +1,186 @@
+name: platform-mvp
+
+# CI workflow for spec `platform-improvements-mvp` (task 17.2).
+#
+# Enforces the gates fixed in design §3.6 ("Continuous integration") and
+# requirements R6.14, R7.9, R7.10:
+#   - Frontend `biome ci .` (R7.9)
+#   - Backend  `biome check .`
+#   - Backend  unit + property + integration tests against a Postgres service
+#   - Frontend unit + property tests
+#   - `npm audit --audit-level=high` for both packages (R6.14)
+#   - SQL-raw grep via `scripts/check-sql-raw.sh` (R6.2)
+#   - OWASP audit document presence check (R6.1)
+#   - Backend `biome.json` SHA-256 checksum check (R7.10)
+
+on:
+  pull_request:
+    branches:
+      - main
+      - master
+  push:
+    branches:
+      - main
+      - master
+
+permissions:
+  contents: read
+
+concurrency:
+  group: platform-mvp-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: '22'
+  # Pinned SHA-256 baseline of `backend/biome.json` (R7.10). MUST match the
+  # value embedded in `frontend/tests/lint/biomeJsonCanonical.test.ts`. Update
+  # this constant only when the backend Biome configuration is intentionally
+  # changed and the corresponding test baseline is re-pinned in lockstep.
+  BACKEND_BIOME_SHA256: 199a3a29ae55c652b641d2208443e7b7d2ba21af280d6d01fe58f1e57bda438c
+
+jobs:
+  frontend-lint:
+    name: Frontend biome ci (R7.9)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+      - name: Run biome ci (non-modifying lint+format check)
+        working-directory: frontend
+        run: npm run lint:ci
+
+  frontend-test:
+    name: Frontend unit + property tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+      - name: Run vitest (unit + property)
+        working-directory: frontend
+        run: npm test
+
+  backend-lint:
+    name: Backend biome check
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - name: Install backend dependencies
+        working-directory: backend
+        run: npm ci
+      - name: Run biome check
+        working-directory: backend
+        run: npm run lint
+
+  backend-test:
+    name: Backend unit + property + integration tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: avtoexpert_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d avtoexpert_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    env:
+      NODE_ENV: test
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/avtoexpert_test
+      JWT_SECRET: ci-platform-mvp-test-secret-at-least-32-chars-long
+      JWT_EXPIRES_IN: 8h
+      AUDIT_RETENTION_CRON_ENABLED: 'false'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - name: Install backend dependencies
+        working-directory: backend
+        run: npm ci
+      - name: Wait for Postgres readiness
+        run: |
+          for i in {1..30}; do
+            if pg_isready -h localhost -p 5432 -U postgres -d avtoexpert_test >/dev/null 2>&1; then
+              echo "postgres is ready"
+              exit 0
+            fi
+            echo "postgres not ready yet ($i/30)"
+            sleep 2
+          done
+          echo "::error::postgres did not become ready in time"
+          exit 1
+      - name: Apply Drizzle migrations
+        working-directory: backend
+        run: npm run db:migrate
+      - name: Run vitest (unit + property + integration)
+        working-directory: backend
+        run: npm test
+
+  security:
+    name: Security gates (R6.2, R6.14, R7.10) + OWASP doc
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - name: Install ripgrep (for SQL-raw grep)
+        run: sudo apt-get update && sudo apt-get install -y ripgrep
+      - name: SQL-raw grep (R6.2)
+        run: bash scripts/check-sql-raw.sh
+      - name: OWASP audit document presence (R6.1)
+        run: |
+          DOC=".kiro/specs/platform-improvements-mvp/security-audit.md"
+          if [ ! -f "$DOC" ]; then
+            echo "::error::missing $DOC (R6.1)"
+            exit 1
+          fi
+          echo "OK: $DOC present"
+      - name: Backend biome.json checksum (R7.10)
+        run: |
+          EXPECTED="${BACKEND_BIOME_SHA256}"
+          ACTUAL="$(sha256sum backend/biome.json | awk '{print $1}')"
+          if [ "$ACTUAL" != "$EXPECTED" ]; then
+            echo "::error::backend/biome.json checksum mismatch (R7.10)"
+            echo "expected: $EXPECTED"
+            echo "actual:   $ACTUAL"
+            exit 1
+          fi
+          echo "OK: backend/biome.json matches pinned baseline"
+      - name: npm audit (backend, R6.14)
+        working-directory: backend
+        run: npm audit --audit-level=high
+      - name: npm audit (frontend, R6.14)
+        working-directory: frontend
+        run: npm audit --audit-level=high

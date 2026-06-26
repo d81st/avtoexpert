@@ -1,6 +1,6 @@
-import { Navigate } from "react-router-dom";
-import { type ReactNode } from "react";
-import { useAuthStore } from "@/shared/auth/useAuthStore";
+import type { ReactNode } from 'react';
+import { Navigate } from 'react-router-dom';
+import { useAuthStore } from '@/shared/auth/useAuthStore';
 
 interface PrivateRouteProps {
   children: ReactNode;
@@ -15,7 +15,7 @@ function PrivateRoute({ children, requireAdmin = false }: PrivateRouteProps) {
     return <Navigate to="/login" replace />;
   }
 
-  if (requireAdmin && user?.role !== "admin") {
+  if (requireAdmin && user?.role !== 'admin') {
     return <Navigate to="/" replace />;
   }
 

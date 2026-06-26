@@ -1,34 +1,31 @@
-import { useEffect } from 'react';
-import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useFormStore } from '../model/useFormStore';
-import { useValidationSync } from '../hooks/useValidationSync';
-import type { Step2Data } from '../types';
-import { step2Schema, type Step2FormData } from '@/schemas/step2.schema';
-import {
-  BODY_TYPES,
-  CAR_MODELS,
-  TRANSMISSION_TYPES,
-  ODOMETER_STATUSES,
-  generateYearOptions,
-} from '@/constants/reference';
+import { useForm } from 'react-hook-form';
 import {
   Form,
+  FormControl,
   FormField,
   FormItem,
   FormLabel,
-  FormControl,
   FormMessage,
-  FormDescription,
 } from '@/components/ui/form';
-import { Input } from '@/components/ui/input';
 import {
   Select,
-  SelectTrigger,
-  SelectValue,
   SelectContent,
   SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from '@/components/ui/select';
+import {
+  BODY_TYPES,
+  CAR_MODELS,
+  generateYearOptions,
+  ODOMETER_STATUSES,
+  TRANSMISSION_TYPES,
+} from '@/constants/reference';
+import { type Step2FormData, step2Schema } from '@/schemas/step2.schema';
+import { useValidationSync } from '../hooks/useValidationSync';
+import { useFormStore } from '../model/useFormStore';
+import { FormStoreSync, IsolatedNumberField, IsolatedTextField } from './fields/isolated-fields';
 
 interface StepFormProps {
   onValidationChange: (isValid: boolean) => void;
@@ -61,15 +58,10 @@ function Step2({ onValidationChange }: StepFormProps) {
     },
   });
 
-  const { control, formState: { isValid } } = form;
-
-  // Sync form data with FormStore via useWatch
-  const watchedValues = useWatch({ control });
-  useEffect(() => {
-    if (watchedValues && Object.keys(watchedValues).length > 0) {
-      setStep2(watchedValues as Step2Data);
-    }
-  }, [watchedValues, setStep2]);
+  const {
+    control,
+    formState: { isValid },
+  } = form;
 
   // Sync validation state via formState.isValid subscription
   useValidationSync(isValid, onValidationChange);
@@ -78,6 +70,10 @@ function Step2({ onValidationChange }: StepFormProps) {
 
   return (
     <Form {...form}>
+      {/* Isolated, debounced Zustand sync — keeps the whole-form watch off this
+          component's render path (R1.3). */}
+      <FormStoreSync control={control} setter={setStep2} />
+
       <div className="space-y-8">
         <div>
           <h2 className="text-2xl font-bold text-gray-800">Шаг 2: Identifikatsiya</h2>
@@ -86,31 +82,23 @@ function Step2({ onValidationChange }: StepFormProps) {
 
         {/* Блок 2.1 */}
         <section>
-          <h3 className="text-lg font-semibold text-gray-800 mb-4 pb-2 border-b">2.1 — Данные автомобиля</h3>
+          <h3 className="text-lg font-semibold text-gray-800 mb-4 pb-2 border-b">
+            2.1 — Данные автомобиля
+          </h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <FormField
-              control={control}
+            <IsolatedTextField
               name="car_model"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Модель / Avtomobil modeli <span className="text-red-500">*</span></FormLabel>
-                  <FormControl>
-                    <div>
-                      <Input
-                        list="car-models"
-                        placeholder="Chevrolet Nexia 3"
-                        {...field}
-                      />
-                      <datalist id="car-models">
-                        {CAR_MODELS.map((model) => (
-                          <option key={model} value={model} />
-                        ))}
-                      </datalist>
-                    </div>
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
+              label="Модель / Avtomobil modeli"
+              required
+              placeholder="Chevrolet Nexia 3"
+              list="car-models"
+              afterInput={
+                <datalist id="car-models">
+                  {CAR_MODELS.map((model) => (
+                    <option key={model} value={model} />
+                  ))}
+                </datalist>
+              }
             />
 
             <FormField
@@ -118,7 +106,9 @@ function Step2({ onValidationChange }: StepFormProps) {
               name="car_year"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Год выпуска / Ishlab chiqarilgan <span className="text-red-500">*</span></FormLabel>
+                  <FormLabel>
+                    Год выпуска / Ishlab chiqarilgan <span className="text-red-500">*</span>
+                  </FormLabel>
                   <Select
                     onValueChange={(val) => field.onChange(Number(val))}
                     value={String(field.value)}
@@ -130,7 +120,9 @@ function Step2({ onValidationChange }: StepFormProps) {
                     </FormControl>
                     <SelectContent>
                       {yearOptions.map((year) => (
-                        <SelectItem key={year} value={String(year)}>{year}</SelectItem>
+                        <SelectItem key={year} value={String(year)}>
+                          {year}
+                        </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -139,30 +131,17 @@ function Step2({ onValidationChange }: StepFormProps) {
               )}
             />
 
-            <FormField
-              control={control}
-              name="car_color"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Цвет / Rangi <span className="text-red-500">*</span></FormLabel>
-                  <FormControl>
-                    <Input {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            <IsolatedTextField name="car_color" label="Цвет / Rangi" required />
 
             <FormField
               control={control}
               name="body_type"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Тип кузова / Kuzov turi <span className="text-red-500">*</span></FormLabel>
-                  <Select
-                    onValueChange={field.onChange}
-                    value={field.value}
-                  >
+                  <FormLabel>
+                    Тип кузова / Kuzov turi <span className="text-red-500">*</span>
+                  </FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value}>
                     <FormControl>
                       <SelectTrigger>
                         <SelectValue placeholder="Выберите..." />
@@ -170,7 +149,9 @@ function Step2({ onValidationChange }: StepFormProps) {
                     </FormControl>
                     <SelectContent>
                       {BODY_TYPES.map((t) => (
-                        <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
+                        <SelectItem key={t.value} value={t.value}>
+                          {t.label}
+                        </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -179,114 +160,58 @@ function Step2({ onValidationChange }: StepFormProps) {
               )}
             />
 
-            <FormField
-              control={control}
+            <IsolatedTextField
               name="license_plate"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Госномер / Davlat raqami <span className="text-red-500">*</span></FormLabel>
-                  <FormControl>
-                    <Input
-                      placeholder="01A123BC"
-                      {...field}
-                      onChange={(e) => field.onChange(e.target.value.toUpperCase())}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
+              label="Госномер / Davlat raqami"
+              required
+              placeholder="01A123BC"
+              transformValue={(raw) => raw.toUpperCase()}
             />
           </div>
         </section>
 
         {/* Блок 2.2 */}
         <section>
-          <h3 className="text-lg font-semibold text-gray-800 mb-4 pb-2 border-b">2.2 — Данные владельца</h3>
+          <h3 className="text-lg font-semibold text-gray-800 mb-4 pb-2 border-b">
+            2.2 — Данные владельца
+          </h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <FormField
-              control={control}
-              name="owner_name"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Ф.И.О. / F.I.O <span className="text-red-500">*</span></FormLabel>
-                  <FormControl>
-                    <Input {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            <IsolatedTextField name="owner_name" label="Ф.И.О. / F.I.O" required />
 
-            <FormField
-              control={control}
-              name="tech_passport"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Техпаспорт / Texpassport <span className="text-red-500">*</span></FormLabel>
-                  <FormControl>
-                    <Input {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            <IsolatedTextField name="tech_passport" label="Техпаспорт / Texpassport" required />
 
-            <div className="md:col-span-2">
-              <FormField
-                control={control}
-                name="tech_passport_place"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Место выдачи техпаспорта / Berilgan joy</FormLabel>
-                    <FormControl>
-                      <Input
-                        placeholder="Необязательно"
-                        {...field}
-                        value={field.value || ''}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
+            <IsolatedTextField
+              name="tech_passport_place"
+              label="Место выдачи техпаспорта / Berilgan joy"
+              placeholder="Необязательно"
+              className="md:col-span-2"
+            />
           </div>
         </section>
 
         {/* Блок 2.3 */}
         <section>
-          <h3 className="text-lg font-semibold text-gray-800 mb-4 pb-2 border-b">2.3 — Технические данные</h3>
+          <h3 className="text-lg font-semibold text-gray-800 mb-4 pb-2 border-b">
+            2.3 — Технические данные
+          </h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <FormField
-              control={control}
-              name="mileage"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Одометр (км) / Odometr <span className="text-red-500">*</span></FormLabel>
-                  <FormControl>
-                    <Input
-                      type="number"
-                      min={0}
-                      {...field}
-                      value={field.value || ''}
-                      onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            <IsolatedNumberField name="mileage" label="Одометр (км) / Odometr" required min={0} />
 
             <FormField
               control={control}
               name="odometer_status"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Статус одометра / Odometr holati <span className="text-red-500">*</span></FormLabel>
+                  <FormLabel>
+                    Статус одометра / Odometr holati <span className="text-red-500">*</span>
+                  </FormLabel>
                   <FormControl>
                     <div className="flex gap-4 mt-1">
                       {ODOMETER_STATUSES.map((status) => (
-                        <label key={status.value} className="flex items-center gap-2 cursor-pointer">
+                        <label
+                          key={status.value}
+                          className="flex items-center gap-2 cursor-pointer"
+                        >
                           <input
                             type="radio"
                             name="odometerStatus"
@@ -305,82 +230,47 @@ function Step2({ onValidationChange }: StepFormProps) {
               )}
             />
 
-            <FormField
-              control={control}
+            <IsolatedNumberField
               name="mileage_by_method"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Одометр по методике / Metodika odometr</FormLabel>
-                  <FormControl>
-                    <Input
-                      type="number"
-                      min={0}
-                      {...field}
-                      value={field.value || ''}
-                      onChange={(e) => field.onChange(parseInt(e.target.value) || undefined)}
-                    />
-                  </FormControl>
-                  <FormDescription>Расчётный пробег (необязательно)</FormDescription>
-                  <FormMessage />
-                </FormItem>
-              )}
+              label="Одометр по методике / Metodika odometr"
+              min={0}
+              optional
+              description="Расчётный пробег (необязательно)"
             />
 
-            <div className="md:col-span-2">
-              <FormField
-                control={control}
-                name="vin_code"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>VIN-код / VIN kod <span className="text-red-500">*</span></FormLabel>
-                    <FormControl>
-                      <Input
-                        placeholder="WBAAA1305L1234567"
-                        maxLength={17}
-                        {...field}
-                        onChange={(e) => field.onChange(e.target.value.toUpperCase().slice(0, 17))}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
+            <IsolatedTextField
+              name="vin_code"
+              label="VIN-код / VIN kod"
+              required
+              placeholder="WBAAA1305L1234567"
+              maxLength={17}
+              transformValue={(raw) => raw.toUpperCase().slice(0, 17)}
+              className="md:col-span-2"
+            />
 
-            <FormField
-              control={control}
+            <IsolatedTextField
               name="engine_number"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Номер двигателя / Dvigatel raqami</FormLabel>
-                  <FormControl>
-                    <Input
-                      placeholder="Необязательно"
-                      {...field}
-                      value={field.value || ''}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
+              label="Номер двигателя / Dvigatel raqami"
+              placeholder="Необязательно"
             />
           </div>
         </section>
 
         {/* Блок 2.4 */}
         <section>
-          <h3 className="text-lg font-semibold text-gray-800 mb-4 pb-2 border-b">2.4 — Внешний осмотр</h3>
+          <h3 className="text-lg font-semibold text-gray-800 mb-4 pb-2 border-b">
+            2.4 — Внешний осмотр
+          </h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <FormField
               control={control}
               name="transmission_type"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Тип трансмиссии / Transmissiya turi <span className="text-red-500">*</span></FormLabel>
-                  <Select
-                    onValueChange={field.onChange}
-                    value={field.value}
-                  >
+                  <FormLabel>
+                    Тип трансмиссии / Transmissiya turi <span className="text-red-500">*</span>
+                  </FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value}>
                     <FormControl>
                       <SelectTrigger>
                         <SelectValue placeholder="Выберите..." />
@@ -388,7 +278,9 @@ function Step2({ onValidationChange }: StepFormProps) {
                     </FormControl>
                     <SelectContent>
                       {TRANSMISSION_TYPES.map((t) => (
-                        <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
+                        <SelectItem key={t.value} value={t.value}>
+                          {t.label}
+                        </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -402,7 +294,9 @@ function Step2({ onValidationChange }: StepFormProps) {
               name="passport_match"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Сравнение с техпаспортом / Taqqoslash <span className="text-red-500">*</span></FormLabel>
+                  <FormLabel>
+                    Сравнение с техпаспортом / Taqqoslash <span className="text-red-500">*</span>
+                  </FormLabel>
                   <FormControl>
                     <div className="flex gap-4 mt-1">
                       <label className="flex items-center gap-2 cursor-pointer">
@@ -432,22 +326,10 @@ function Step2({ onValidationChange }: StepFormProps) {
               )}
             />
 
-            <FormField
-              control={control}
+            <IsolatedTextField
               name="camera_model"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Модель камеры / Kamera modeli</FormLabel>
-                  <FormControl>
-                    <Input
-                      placeholder="Необязательно"
-                      {...field}
-                      value={field.value || ''}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
+              label="Модель камеры / Kamera modeli"
+              placeholder="Необязательно"
             />
           </div>
         </section>

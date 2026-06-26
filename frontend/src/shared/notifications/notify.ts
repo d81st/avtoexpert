@@ -1,4 +1,4 @@
-import { toast, type ExternalToast } from "sonner";
+import { type ExternalToast, toast } from 'sonner';
 
 /**
  * Публичный API уведомлений (`Notification_System` из спека).
@@ -34,7 +34,7 @@ export interface NotifyOptions {
 }
 
 function assertLength(
-  field: "message" | "title" | "description",
+  field: 'message' | 'title' | 'description',
   value: string,
   min: number,
   max: number,
@@ -46,20 +46,17 @@ function assertLength(
   }
 }
 
-function buildToastOptions(
-  options: NotifyOptions | undefined,
-  durationMs: number,
-): ExternalToast {
+function buildToastOptions(options: NotifyOptions | undefined, durationMs: number): ExternalToast {
   const opts: ExternalToast = { duration: durationMs };
 
   if (options?.title !== undefined) {
-    assertLength("title", options.title, 1, MAX_TITLE_LEN);
+    assertLength('title', options.title, 1, MAX_TITLE_LEN);
     // Sonner отображает первый аргумент `toast.*` как заголовок карточки;
     // здесь мы валидируем длину `title` для соблюдения контракта AC 5.13.
   }
 
   if (options?.description !== undefined) {
-    assertLength("description", options.description, 1, MAX_MESSAGE_LEN);
+    assertLength('description', options.description, 1, MAX_MESSAGE_LEN);
     opts.description = options.description;
   }
 
@@ -73,25 +70,25 @@ function buildToastOptions(
 export const notify = {
   /** Toast-уведомление об успехе. Auto-dismiss 5000 мс (AC 5.3, 5.7). */
   success(message: string, options?: NotifyOptions): void {
-    assertLength("message", message, 1, MAX_MESSAGE_LEN);
+    assertLength('message', message, 1, MAX_MESSAGE_LEN);
     toast.success(message, buildToastOptions(options, SUCCESS_INFO_DURATION_MS));
   },
 
   /** Toast-уведомление об ошибке. Auto-dismiss 8000 мс (AC 5.4, 5.8). */
   error(message: string, options?: NotifyOptions): void {
-    assertLength("message", message, 1, MAX_MESSAGE_LEN);
+    assertLength('message', message, 1, MAX_MESSAGE_LEN);
     toast.error(message, buildToastOptions(options, ERROR_WARNING_DURATION_MS));
   },
 
   /** Информационный toast. Auto-dismiss 5000 мс (AC 5.5, 5.7). */
   info(message: string, options?: NotifyOptions): void {
-    assertLength("message", message, 1, MAX_MESSAGE_LEN);
+    assertLength('message', message, 1, MAX_MESSAGE_LEN);
     toast.info(message, buildToastOptions(options, SUCCESS_INFO_DURATION_MS));
   },
 
   /** Предупреждающий toast. Auto-dismiss 8000 мс (AC 5.6, 5.8). */
   warning(message: string, options?: NotifyOptions): void {
-    assertLength("message", message, 1, MAX_MESSAGE_LEN);
+    assertLength('message', message, 1, MAX_MESSAGE_LEN);
     toast.warning(message, buildToastOptions(options, ERROR_WARNING_DURATION_MS));
   },
 };

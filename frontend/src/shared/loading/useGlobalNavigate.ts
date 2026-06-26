@@ -1,12 +1,12 @@
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef } from 'react';
 import {
-  useLocation,
-  useNavigate,
   type NavigateFunction,
   type NavigateOptions,
   type To,
-} from "react-router-dom";
-import { useGlobalLoadingStore } from "./useGlobalLoadingStore";
+  useLocation,
+  useNavigate,
+} from 'react-router-dom';
+import { useGlobalLoadingStore } from './useGlobalLoadingStore';
 
 /**
  * Hard timeout for programmatic navigation transitions.
@@ -68,8 +68,7 @@ export function useGlobalNavigate(): NavigateFunction {
   // so callers see the same overloaded signature as `useNavigate`.
   const navigateWithLoading = useCallback(
     (to: To | number, options?: NavigateOptions) => {
-      const { startNavigation, endNavigation } =
-        useGlobalLoadingStore.getState();
+      const { startNavigation, endNavigation } = useGlobalLoadingStore.getState();
 
       // AC 4.5 — mark navigation active before delegating to react-router.
       startNavigation();
@@ -86,7 +85,7 @@ export function useGlobalNavigate(): NavigateFunction {
 
       // `NavigateFunction` is overloaded: `(to: To, options?)` and `(delta: number)`.
       // Dispatch to the matching overload so both call shapes type-check.
-      if (typeof to === "number") {
+      if (typeof to === 'number') {
         return navigate(to);
       }
       return navigate(to, options);

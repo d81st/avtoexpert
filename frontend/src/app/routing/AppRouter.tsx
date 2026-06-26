@@ -1,15 +1,15 @@
-import { lazy, Suspense } from "react";
-import { Navigate, Route, Routes } from "react-router-dom";
-import { useAuthSession } from "@/features/auth/hooks/useAuthSession";
-import { Loader2 } from "lucide-react";
-import ErrorBoundary from "@/app/errors/ErrorBoundary";
-import PrivateRoute from "./PrivateRoute";
+import { Loader2 } from 'lucide-react';
+import { lazy, Suspense } from 'react';
+import { Navigate, Route, Routes } from 'react-router-dom';
+import ErrorBoundary from '@/app/errors/ErrorBoundary';
+import { useAuthSession } from '@/features/auth/hooks/useAuthSession';
+import PrivateRoute from './PrivateRoute';
 
-const Dashboard = lazy(() => import("@/features/reports/ui/Dashboard"));
-const ReportPage = lazy(() => import("@/features/reports/ui/ReportPage"));
-const AdminPage = lazy(() => import("@/features/admin/ui/AdminPage"));
-const Login = lazy(() => import("@/features/auth/ui/Login"));
-const NotFound = lazy(() => import("./NotFound"));
+const Dashboard = lazy(() => import('@/features/reports/ui/Dashboard'));
+const ReportPage = lazy(() => import('@/features/reports/ui/ReportPage'));
+const AdminPage = lazy(() => import('@/features/admin/ui/AdminPage'));
+const Login = lazy(() => import('@/features/auth/ui/Login'));
+const NotFound = lazy(() => import('./NotFound'));
 
 function PageLoader({ message }: { message: string }) {
   return (
@@ -33,9 +33,7 @@ export default function AppRouter() {
         <Routes>
           <Route
             path="/login"
-            element={
-              isAuthenticated ? <Navigate to="/" replace /> : <Login />
-            }
+            element={isAuthenticated ? <Navigate to="/" replace /> : <Login />}
           />
           <Route
             path="/"

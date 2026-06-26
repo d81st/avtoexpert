@@ -1,6 +1,6 @@
-import { createContext, useContext, useState, useCallback } from "react";
+import { createContext, useCallback, useContext, useState } from 'react';
 
-type Locale = "ru" | "en";
+type Locale = 'ru' | 'en';
 
 interface LocaleContextValue {
   locale: Locale;
@@ -14,28 +14,21 @@ interface LocaleProviderProps {
   defaultLocale?: Locale;
 }
 
-export function LocaleProvider({
-  children,
-  defaultLocale = "ru",
-}: LocaleProviderProps) {
+export function LocaleProvider({ children, defaultLocale = 'ru' }: LocaleProviderProps) {
   const [locale, setLocaleState] = useState<Locale>(defaultLocale);
 
   const setLocale = useCallback((newLocale: Locale) => {
     setLocaleState(newLocale);
   }, []);
 
-  return (
-    <LocaleContext.Provider value={{ locale, setLocale }}>
-      {children}
-    </LocaleContext.Provider>
-  );
+  return <LocaleContext.Provider value={{ locale, setLocale }}>{children}</LocaleContext.Provider>;
 }
 
 // eslint-disable-next-line react-refresh/only-export-components
 export function useLocale(): LocaleContextValue {
   const context = useContext(LocaleContext);
   if (!context) {
-    throw new Error("useLocale must be used within a LocaleProvider");
+    throw new Error('useLocale must be used within a LocaleProvider');
   }
   return context;
 }

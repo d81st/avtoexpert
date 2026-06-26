@@ -1,4 +1,4 @@
-import { CircleCheck, CircleX, TriangleAlert, Info } from "lucide-react";
+import { CircleCheck, CircleX, Info, TriangleAlert } from 'lucide-react';
 
 export const ALERT_ICON_MAP = {
   success: CircleCheck,

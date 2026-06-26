@@ -1,4 +1,4 @@
-import type { RepairWork, SparePart, Material, PaintWork } from "../types";
+import type { Material, PaintWork, RepairWork, SparePart } from '../types';
 
 export const BT_COEFFICIENTS: Record<string, number> = {
   'BT-1': 1.0,
@@ -34,15 +34,18 @@ export function calcRepairWorksTotal(repairWorks: RepairWork[]): number {
 
 export function calcPaintWorksTotal(paintWorks: PaintWork[]): number {
   return paintWorks.reduce(
-    (sum, work) => sum + (work.paint_price > 0 ? work.paint_price : 0) + (work.polish_price > 0 ? work.polish_price : 0),
-    0
+    (sum, work) =>
+      sum +
+      (work.paint_price > 0 ? work.paint_price : 0) +
+      (work.polish_price > 0 ? work.polish_price : 0),
+    0,
   );
 }
 
 export function calcSparePartsTotal(spareParts: SparePart[]): number {
   return spareParts.reduce(
     (sum, part) => sum + (part.qty > 0 && part.price >= 0 ? part.qty * part.price : 0),
-    0
+    0,
   );
 }
 
@@ -53,7 +56,7 @@ export function calcSparePartsWithWear(total: number, depreciationPct: number): 
 export function calcMaterialsTotal(materials: Material[]): number {
   return materials.reduce(
     (sum, mat) => sum + (mat.qty > 0 && mat.price >= 0 ? mat.qty * mat.price : 0),
-    0
+    0,
   );
 }
 
@@ -70,9 +73,13 @@ export function calcGrandTotal(params: {
   totalMaterials: number;
   grandTotal: number;
 } {
-  const totalWorks = calcRepairWorksTotal(params.repairWorks) + calcPaintWorksTotal(params.paintWorks);
+  const totalWorks =
+    calcRepairWorksTotal(params.repairWorks) + calcPaintWorksTotal(params.paintWorks);
   const totalSparePartsFull = calcSparePartsTotal(params.spareParts);
-  const totalSparePartsWithWear = calcSparePartsWithWear(totalSparePartsFull, params.depreciationPct);
+  const totalSparePartsWithWear = calcSparePartsWithWear(
+    totalSparePartsFull,
+    params.depreciationPct,
+  );
   const totalMaterials = calcMaterialsTotal(params.materials);
   const grandTotal = totalWorks + totalSparePartsWithWear + totalMaterials;
 

@@ -14,6 +14,7 @@ import { docGenerationLimiter } from './docGenerationLimiter.js';
 import {
   autosaveSchema,
   createReportSchema,
+  photoPatchSchema,
   reportsQuerySchema,
   type Step4Input,
   step2Schema,
@@ -97,12 +98,12 @@ router.patch(
   authMiddleware,
   validate({ params: uuidParamsSchema, body: autosaveSchema }),
   async (req: AuthRequest, res) => {
-    await reportService.autosave(
+    const { version } = await reportService.autosave(
       req.params.id as string,
       getCreatorId(req),
       req.body as Record<string, unknown>,
     );
-    res.json({ saved_at: new Date().toISOString() });
+    res.json({ saved_at: new Date().toISOString(), version });
   },
 );
 
@@ -197,6 +198,21 @@ router.delete(
       req.params.photoId as string,
     );
     res.json({ message: 'Photo deleted' });
+  },
+);
+
+router.patch(
+  '/:id/photos/:photoId',
+  authMiddleware,
+  validate({ params: photoParamsSchema, body: photoPatchSchema }),
+  async (req: AuthRequest, res) => {
+    const result = await reportService.patchPhoto(
+      req.params.photoId as string,
+      req.params.id as string,
+      getCreatorId(req),
+      req.body as z.infer<typeof photoPatchSchema>,
+    );
+    res.json(result);
   },
 );
 

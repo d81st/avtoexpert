@@ -1,6 +1,6 @@
-import apiClient from "@/shared/api/client";
-import type { PaginatedResponse } from "@/shared/api/types";
-import type { AdminReportsQueryParams } from "../types";
+import apiClient from '@/shared/api/client';
+import type { PaginatedResponse } from '@/shared/api/types';
+import type { AdminReportsQueryParams } from '../types';
 
 export const adminService = {
   async getAllReports(
@@ -8,26 +8,21 @@ export const adminService = {
   ): Promise<PaginatedResponse<Record<string, unknown>>> {
     const searchParams = new URLSearchParams();
 
-    if (params?.page) searchParams.set("page", String(params.page));
-    if (params?.limit) searchParams.set("limit", String(params.limit));
-    if (params?.search) searchParams.set("search", params.search);
-    if (params?.status) searchParams.set("status", params.status);
+    if (params?.page) searchParams.set('page', String(params.page));
+    if (params?.limit) searchParams.set('limit', String(params.limit));
+    if (params?.search) searchParams.set('search', params.search);
+    if (params?.status) searchParams.set('status', params.status);
 
     const queryString = searchParams.toString();
-    const url = queryString
-      ? `/admin/reports?${queryString}`
-      : "/admin/reports";
+    const url = queryString ? `/admin/reports?${queryString}` : '/admin/reports';
 
-    const response =
-      await apiClient.get<PaginatedResponse<Record<string, unknown>>>(url);
+    const response = await apiClient.get<PaginatedResponse<Record<string, unknown>>>(url);
 
     return response.data;
   },
 
   async getReportDetails(id: string): Promise<Record<string, unknown>> {
-    const response = await apiClient.get<Record<string, unknown>>(
-      `/admin/reports/${id}`,
-    );
+    const response = await apiClient.get<Record<string, unknown>>(`/admin/reports/${id}`);
 
     return response.data;
   },
@@ -35,8 +30,7 @@ export const adminService = {
   async getAllCreators(): Promise<
     Array<{ id: string; full_name: string; role: string; created_at: string }>
   > {
-    const response =
-      await apiClient.get<Array<Record<string, unknown>>>("/admin/creators");
+    const response = await apiClient.get<Array<Record<string, unknown>>>('/admin/creators');
 
     return response.data.map((creator) => ({
       id: creator.id as string,
@@ -52,7 +46,7 @@ export const adminService = {
     size: number;
     lastModified: string;
   }> {
-    const response = await apiClient.get("/admin/template");
+    const response = await apiClient.get('/admin/template');
     return response.data;
   },
 };

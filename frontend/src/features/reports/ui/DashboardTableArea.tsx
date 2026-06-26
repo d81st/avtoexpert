@@ -1,8 +1,9 @@
-import { useNavigate } from "react-router-dom";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { Skeleton } from "@/components/ui/skeleton";
+import { useNavigate } from 'react-router-dom';
+import { AppAlert } from '@/components/ui/app-alert';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
 import {
   Table,
   TableBody,
@@ -10,14 +11,13 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table";
-import { AppAlert } from "@/components/ui/app-alert";
-import { getStatusConfig } from "@/lib/status-variants";
-import { formatDate, formatProgress } from "@/shared/lib/formatters";
-import type { UseDashboardReturn } from "../hooks/useDashboard";
-import type { Report } from "../types";
+} from '@/components/ui/table';
+import { getStatusConfig } from '@/lib/status-variants';
+import { formatDate, formatProgress } from '@/shared/lib/formatters';
+import type { UseDashboardReturn } from '../hooks/useDashboard';
+import type { Report } from '../types';
 
-type Pagination = UseDashboardReturn["pagination"];
+type Pagination = UseDashboardReturn['pagination'];
 
 export interface DashboardTableAreaProps {
   /**
@@ -64,6 +64,7 @@ function DashboardTableArea({
       {isInitialLoading ? (
         <div className="space-y-3">
           {Array.from({ length: SKELETON_ROWS }).map((_, i) => (
+            // biome-ignore lint/suspicious/noArrayIndexKey: static fixed-length loading skeletons never reorder
             <Skeleton key={i} className="h-12 w-full" />
           ))}
         </div>
@@ -72,12 +73,8 @@ function DashboardTableArea({
       ) : reports.length === 0 ? (
         <Card className="text-center">
           <CardContent className="pt-6">
-            <p className="text-gray-500 text-lg mb-4">
-              У вас пока нет заключений
-            </p>
-            <p className="text-gray-400 text-sm">
-              Создайте первое заключение, чтобы начать работу
-            </p>
+            <p className="text-gray-500 text-lg mb-4">У вас пока нет заключений</p>
+            <p className="text-gray-400 text-sm">Создайте первое заключение, чтобы начать работу</p>
           </CardContent>
         </Card>
       ) : (
@@ -100,9 +97,7 @@ function DashboardTableArea({
                     key={report.id}
                     className="hover:bg-blue-50/50 transition-colors duration-150"
                   >
-                    <TableCell className="font-medium">
-                      {report.report_number}
-                    </TableCell>
+                    <TableCell className="font-medium">{report.report_number}</TableCell>
                     <TableCell className="text-muted-foreground">
                       {formatDate(report.report_date)}
                     </TableCell>
@@ -115,8 +110,8 @@ function DashboardTableArea({
                           <div
                             className={`h-2 rounded-full bg-gradient-to-r ${
                               report.current_step >= 5
-                                ? "from-green-500 to-emerald-500"
-                                : "from-blue-500 to-indigo-500"
+                                ? 'from-green-500 to-emerald-500'
+                                : 'from-blue-500 to-indigo-500'
                             }`}
                             style={{
                               width: `${(report.current_step / 5) * 100}%`,
@@ -137,7 +132,7 @@ function DashboardTableArea({
                       >
                         Открыть
                       </Button>
-                      {report.status === "draft" && (
+                      {report.status === 'draft' && (
                         <Button
                           variant="link"
                           size="sm"

@@ -1,21 +1,18 @@
-import apiClient from "@/shared/api/client";
-import type { Expert, ExpertsQueryParams } from "../types";
+import apiClient from '@/shared/api/client';
+import type { Expert, ExpertsQueryParams } from '../types';
 
 export const expertService = {
   async getExperts(params?: ExpertsQueryParams): Promise<Expert[]> {
-    const response = await apiClient.get<Record<string, unknown>[]>(
-      "/experts",
-      { params },
-    );
+    const response = await apiClient.get<Record<string, unknown>[]>('/experts', { params });
 
     return response.data.map((expert) => ({
-      id: (expert.id as string) || "",
+      id: (expert.id as string) || '',
       full_name: (expert.full_name ?? expert.fullName) as string,
     }));
   },
 
   async createExpert(fullName: string): Promise<Expert> {
-    const response = await apiClient.post<Record<string, unknown>>("/experts", {
+    const response = await apiClient.post<Record<string, unknown>>('/experts', {
       full_name: fullName,
     });
 
@@ -26,12 +23,9 @@ export const expertService = {
   },
 
   async updateExpert(id: string, fullName: string): Promise<Expert> {
-    const response = await apiClient.patch<Record<string, unknown>>(
-      `/experts/${id}`,
-      {
-        full_name: fullName,
-      },
-    );
+    const response = await apiClient.patch<Record<string, unknown>>(`/experts/${id}`, {
+      full_name: fullName,
+    });
 
     return {
       id: response.data.id as string,

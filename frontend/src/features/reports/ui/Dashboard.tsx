@@ -1,13 +1,13 @@
-import { useEffect } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
-import type { AxiosError } from "axios";
-import { useDashboard } from "../hooks/useDashboard";
-import { Button } from "@/components/ui/button";
-import AppLayout from "@/app/routing/AppLayout";
-import { notify } from "@/shared/notifications/notify";
-import { sanitizeErrorMessage } from "@/shared/api/error-mapping";
-import { DashboardSearchBar } from "./DashboardSearchBar";
-import { DashboardTableArea } from "./DashboardTableArea";
+import type { AxiosError } from 'axios';
+import { useEffect } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
+import AppLayout from '@/app/routing/AppLayout';
+import { Button } from '@/components/ui/button';
+import { sanitizeErrorMessage } from '@/shared/api/error-mapping';
+import { notify } from '@/shared/notifications/notify';
+import { useDashboard } from '../hooks/useDashboard';
+import { DashboardSearchBar } from './DashboardSearchBar';
+import { DashboardTableArea } from './DashboardTableArea';
 
 type DashboardLocationState = { justGenerated?: boolean } | null;
 
@@ -38,7 +38,7 @@ function Dashboard() {
   // показал toast повторно.
   useEffect(() => {
     if (!justGenerated) return;
-    notify.success("Заключение успешно сгенерировано");
+    notify.success('Заключение успешно сгенерировано');
     navigate(location.pathname, { replace: true, state: null });
   }, [justGenerated, navigate, location.pathname]);
 
@@ -60,8 +60,7 @@ function Dashboard() {
   // Persistent inline-ошибка показывается только когда нет ни одного
   // отчёта для рендера (AC 5.11). При наличии кэшированных строк ошибка
   // уже покрыта transient toast выше и список остаётся видимым (AC 1.7).
-  const persistentError =
-    error && reports.length === 0 ? error : null;
+  const persistentError = error && reports.length === 0 ? error : null;
 
   return (
     <AppLayout>
@@ -70,15 +69,13 @@ function Dashboard() {
         className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6"
       >
         <div>
-          <h2 className="text-xl font-semibold text-gray-800">
-            Мои заключения
-          </h2>
+          <h2 className="text-xl font-semibold text-gray-800">Мои заключения</h2>
           <p className="text-sm text-gray-600 mt-1">
-            Всего: {pagination?.total ?? reports.length} | Страница{" "}
-            {pagination?.page ?? 1} из {pagination?.totalPages ?? 1}
+            Всего: {pagination?.total ?? reports.length} | Страница {pagination?.page ?? 1} из{' '}
+            {pagination?.totalPages ?? 1}
           </p>
         </div>
-        <Button onClick={() => navigate("/report/new")} size="lg">
+        <Button onClick={() => navigate('/report/new')} size="lg">
           + Создать заключение
         </Button>
       </div>

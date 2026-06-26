@@ -1,6 +1,6 @@
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { ALERT_ICON_MAP, type AlertType } from "@/lib/alert-variants";
-import { X } from "lucide-react";
+import { X } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { ALERT_ICON_MAP, type AlertType } from '@/lib/alert-variants';
 
 interface AppAlertProps {
   type: AlertType;
@@ -10,7 +10,7 @@ interface AppAlertProps {
 
 function AppAlert({ type, message, onClose }: AppAlertProps) {
   const Icon = ALERT_ICON_MAP[type];
-  const variant = type === "error" ? "destructive" : "default";
+  const variant = type === 'error' ? 'destructive' : 'default';
 
   return (
     <Alert variant={variant} className="relative">
@@ -30,5 +30,5 @@ function AppAlert({ type, message, onClose }: AppAlertProps) {
   );
 }
 
-export { AppAlert };
 export type { AppAlertProps };
+export { AppAlert };

@@ -1,22 +1,123 @@
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useNavigate } from "react-router-dom";
-import { useAuthStore } from "@/shared/auth/useAuthStore";
-import { useLoginMutation } from "../model/authMutations";
-import { loginSchema, type LoginFormData } from "@/schemas/login.schema";
-import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import {
-  Form,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormControl,
-  FormMessage,
-} from "@/components/ui/form";
-import { Loader2 } from "lucide-react";
-import { notify } from "@/shared/notifications/notify";
+import { zodResolver } from '@hookform/resolvers/zod';
+import { AxiosError } from 'axios';
+import { Loader2 } from 'lucide-react';
+import { memo } from 'react';
+import { useForm, useFormContext } from 'react-hook-form';
+import { useNavigate } from 'react-router-dom';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import { Form } from '@/components/ui/form';
+import { Input } from '@/components/ui/input';
+import { useDebouncedSideEffect } from '@/features/reports/hooks/useDebouncedSideEffect';
+import { FieldError, useIsolatedField } from '@/features/reports/hooks/useIsolatedField';
+import { type LoginFormData, loginSchema } from '@/schemas/login.schema';
+import { useAuthStore } from '@/shared/auth/useAuthStore';
+import { notify } from '@/shared/notifications/notify';
+import { useLoginMutation } from '../model/authMutations';
+
+/**
+ * Trim leading/trailing whitespace at form-read time instead of mutating the DOM
+ * value on every keystroke. Used as `register`'s `setValueAs`, so the native input
+ * stays uncontrolled: typing never triggers a parent `setState`, the caret is
+ * preserved (R1.1, R1.2) and the submitted/validated value is still normalized.
+ */
+function trimValue(value: unknown): string {
+  return typeof value === 'string' ? value.trim() : '';
+}
+
+/**
+ * Map a login-mutation error into a Sonner-toast string (Requirement 6.5).
+ *
+ * Specifically targets the two status codes the cookie-based auth flow can
+ * return on `POST /api/login`:
+ *
+ *   - **401 Unauthorized** — credentials are wrong. We deliberately surface
+ *     a generic "неверный логин или пароль" message so an attacker cannot
+ *     enumerate valid accounts (R6.5).
+ *   - **429 Too Many Requests** — the (client_ip, email) key is in the
+ *     15-minute lockout window (R6.12). The backend's `tooManyRequests`
+ *     helper sets a Russian-language `message`; we forward it as-is so the
+ *     user sees the same "слишком много неудачных попыток" wording that
+ *     the audit log records.
+ *
+ * For any other error (network failure, 5xx, validation) we fall back to
+ * the message that the `apiClient` response interceptor has already
+ * sanitized via `sanitizeErrorMessage` and written onto `error.message`.
+ */
+function getLoginErrorMessage(err: unknown): string {
+  if (err instanceof AxiosError) {
+    const status = err.response?.status;
+    if (status === 401) {
+      return 'Неверный логин или пароль';
+    }
+    if (status === 429) {
+      const retryAfter = err.response?.headers?.['retry-after'];
+      const seconds = typeof retryAfter === 'string' ? Number.parseInt(retryAfter, 10) : NaN;
+      if (Number.isFinite(seconds) && seconds > 0) {
+        const minutes = Math.ceil(seconds / 60);
+        return `Слишком много неудачных попыток входа. Повторите попытку через ${minutes} мин.`;
+      }
+      return err.message || 'Слишком много неудачных попыток входа. Повторите попытку позже.';
+    }
+  }
+  if (err instanceof Error && err.message) {
+    return err.message;
+  }
+  return 'Не удалось выполнить вход. Попробуйте ещё раз.';
+}
+
+/**
+ * Per-field render isolation for a single Login_Form input (Requirement 1.1–1.5).
+ *
+ * `useIsolatedField` registers an UNCONTROLLED native input (no external `value`
+ * prop), so a sibling/parent re-render never resets the value or caret (R1.1–R1.3).
+ * The validation side effect (`trigger`) is moved OFF the keystroke handler into a
+ * `useDebouncedSideEffect(fn, 400)` callback: the DOM `value` update is never
+ * blocked waiting on validation, and revalidation runs at most once per 400 ms
+ * quiet window (R1.4, R1.5). Validation output is confined to the sibling
+ * {@link FieldError}, which subscribes to a single-field `useFormState` selector.
+ */
+const LoginTextField = memo(function LoginTextField({
+  name,
+  label,
+  type,
+  disabled,
+}: {
+  name: keyof LoginFormData;
+  label: string;
+  type: 'text' | 'password';
+  disabled: boolean;
+}) {
+  const { trigger } = useFormContext<LoginFormData>();
+  const field = useIsolatedField<LoginFormData>(name, {
+    setValueAs: trimValue,
+  });
+
+  // R1.4 / R1.5 — debounce the validation side effect off the input handler so it
+  // never blocks the keystroke's DOM update and fires within a 300–500 ms window.
+  const debouncedValidate = useDebouncedSideEffect(() => {
+    void trigger(name);
+  }, 400);
+
+  return (
+    <div className="space-y-2">
+      <label htmlFor={`login-${name}`} className="text-sm font-medium leading-none">
+        {label}
+      </label>
+      <Input
+        id={`login-${name}`}
+        type={type}
+        disabled={disabled}
+        {...field}
+        onChange={(e) => {
+          field.onChange(e);
+          debouncedValidate();
+        }}
+      />
+      <FieldError name={name} />
+    </div>
+  );
+});
 
 function Login() {
   const navigate = useNavigate();
@@ -25,10 +126,10 @@ function Login() {
 
   const form = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
-    mode: "onBlur",
+    mode: 'onBlur',
     defaultValues: {
-      login: "",
-      password: "",
+      login: '',
+      password: '',
     },
   });
 
@@ -38,16 +139,18 @@ function Login() {
     loginMutation.mutate(
       { ...payload, config: { silent: true } },
       {
-        onSuccess: (response) => {
-          setAuth(response.token, response.creator);
-          navigate("/");
+        onSuccess: (creator) => {
+          // R6.5 — JWT приходит исключительно в HttpOnly cookie, теле ответа
+          // — только профиль. Локально кэшируем профиль и переходим на дашборд.
+          setAuth(creator);
+          navigate('/');
         },
         onError: (err) => {
-          // AC 5.4 — transient ошибка авторизации показывается через
-          // Notification_System (Sonner toast), а не inline AppAlert.
-          const errorMessage =
-            err instanceof Error ? err.message : "Неверный логин или пароль";
-          notify.error(errorMessage);
+          // R6.5 / R6.12 — inline-toast для 401 (неверные креды) и 429
+          // (lockout). Текст 429 формируется бэкендом и содержит время
+          // ожидания; для 401 показываем явное сообщение, не раскрывая,
+          // что именно — логин или пароль — оказалось неверным.
+          notify.error(getLoginErrorMessage(err));
         },
       },
     );
@@ -61,63 +164,29 @@ function Login() {
             <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 text-2xl text-white shadow-md">
               🚗
             </div>
-            <h1 className="brand-title text-3xl font-bold text-slate-900">
-              AvtoExpert Pro
-            </h1>
-            <p className="page-subtitle mt-1 text-sm">
-              Система экспертизы автомобилей
-            </p>
+            <h1 className="brand-title text-3xl font-bold text-slate-900">AvtoExpert Pro</h1>
+            <p className="page-subtitle mt-1 text-sm">Система экспертизы автомобилей</p>
           </div>
 
           <Form {...form}>
             <form onSubmit={onSubmit} className="mt-6 space-y-4">
-              <FormField
-                control={form.control}
+              <LoginTextField
                 name="login"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Логин</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="text"
-                        disabled={loginMutation.isPending}
-                        {...field}
-                        onChange={(e) => field.onChange(e.target.value.trim())}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="password"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Пароль</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="password"
-                        disabled={loginMutation.isPending}
-                        {...field}
-                        onChange={(e) => field.onChange(e.target.value.trim())}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <Button
-                type="submit"
+                label="Логин"
+                type="text"
                 disabled={loginMutation.isPending}
-                className="w-full"
-              >
-                {loginMutation.isPending && (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                )}
-                {loginMutation.isPending ? "Вход в систему..." : "Войти"}
+              />
+
+              <LoginTextField
+                name="password"
+                label="Пароль"
+                type="password"
+                disabled={loginMutation.isPending}
+              />
+
+              <Button type="submit" disabled={loginMutation.isPending} className="w-full">
+                {loginMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                {loginMutation.isPending ? 'Вход в систему...' : 'Войти'}
               </Button>
             </form>
           </Form>

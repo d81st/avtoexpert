@@ -1,19 +1,13 @@
-import { useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
-import { useReportWizard } from "../hooks/useReportWizard";
-import { useReportAutosave } from "../hooks/useReportAutosave";
-import { useReportFinalize } from "../hooks/useReportFinalize";
-import { useWizardStepSave } from "../hooks/useWizardStepSave";
-import { normalizeReport } from "../lib/reportMapper";
-import Wizard from "./Wizard";
-import WizardNavigation from "./WizardNavigation";
-import { Loader2 } from "lucide-react";
-import { AppAlert } from "@/components/ui/app-alert";
-import Step1 from "./Step1";
-import Step2 from "./Step2";
-import Step3 from "./Step3";
-import Step4 from "./Step4";
-import Step5 from "./Step5";
+import { Loader2 } from 'lucide-react';
+import { useState } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
+import { AppAlert } from '@/components/ui/app-alert';
+import { useReportFinalize } from '../hooks/useReportFinalize';
+import { useReportWizard } from '../hooks/useReportWizard';
+import { useWizardStepSave } from '../hooks/useWizardStepSave';
+import { normalizeReport } from '../lib/reportMapper';
+import Wizard from './Wizard';
+import WizardNavigation from './WizardNavigation';
 
 const TOTAL_STEPS = 5;
 
@@ -36,11 +30,7 @@ function ReportPage() {
   });
 
   const currentReport = reportQuery.data ? normalizeReport(reportQuery.data) : undefined;
-
-  const { isSaving: isAutosaving } = useReportAutosave({
-    reportId: currentReport?.id ?? id,
-    currentStep,
-  });
+  const reportId = currentReport?.id ?? id;
 
   const {
     isGenerating,
@@ -50,7 +40,7 @@ function ReportPage() {
     cooldownSecondsLeft,
     handleFinalize,
   } = useReportFinalize({
-    reportId: currentReport?.id ?? id,
+    reportId,
   });
 
   if (reportQuery.isLoading) {
@@ -63,35 +53,10 @@ function ReportPage() {
   }
 
   if (reportQuery.isError && !reportQuery.data) {
-    return <AppAlert type="error" message={reportQuery.error?.message || "Ошибка загрузки заключения"} />;
+    return (
+      <AppAlert type="error" message={reportQuery.error?.message || 'Ошибка загрузки заключения'} />
+    );
   }
-
-  const renderStep = () => {
-    switch (currentStep) {
-      case 1:
-        return <Step1 onValidationChange={setIsValid} />;
-      case 2:
-        return <Step2 onValidationChange={setIsValid} />;
-      case 3:
-        return <Step3 onValidationChange={setIsValid} />;
-      case 4:
-        return <Step4 onValidationChange={setIsValid} />;
-      case 5:
-        return (
-          <Step5
-            onValidationChange={setIsValid}
-            onFinalize={handleFinalize}
-            isGenerating={isGenerating}
-            generateError={generateError}
-            generateSuccess={generateSuccess}
-            cooldownReason={cooldownReason}
-            cooldownSecondsLeft={cooldownSecondsLeft}
-          />
-        );
-      default:
-        return null;
-    }
-  };
 
   return (
     <div className="app-shell py-8">
@@ -101,14 +66,15 @@ function ReportPage() {
             <h1 className="brand-title text-3xl font-bold text-slate-900">
               {currentReport?.report_number
                 ? `Заключение №${currentReport.report_number}`
-                : "Новое заключение"}
+                : 'Новое заключение'}
             </h1>
             <p className="page-subtitle mt-1 text-sm">
               Шаг {currentStep} из {TOTAL_STEPS}
             </p>
           </div>
           <button
-            onClick={() => navigate("/")}
+            onClick={() => navigate('/')}
+            type="button"
             className="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white px-4 py-2.5 font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"
           >
             ← Назад к списку
@@ -125,27 +91,32 @@ function ReportPage() {
           остаётся выше в early-return (AC 5.11).
         */}
 
-        <Wizard currentStep={currentStep} totalSteps={TOTAL_STEPS}>
-          <div className="mb-6">{renderStep()}</div>
-
-          {currentStep < TOTAL_STEPS && (
-            <WizardNavigation
-              onNext={handleSaveAndNext}
-              onPrevious={handlePrevious}
-              canGoNext={isValid}
-              canGoPrevious={currentStep > 1}
-              isLastStep={false}
-              isSaving={isSaving}
-            />
-          )}
-        </Wizard>
-
-        {isAutosaving && (
-          <div className="fixed bottom-4 right-4 bg-blue-600 text-white px-4 py-3 rounded-lg shadow-lg flex items-center gap-2">
-            <span className="animate-spin">⟳</span>
-            Авто-сохранение...
-          </div>
-        )}
+        <Wizard
+          reportId={reportId}
+          currentStep={currentStep}
+          totalSteps={TOTAL_STEPS}
+          onValidationChange={setIsValid}
+          step5Props={{
+            onFinalize: handleFinalize,
+            isGenerating,
+            generateError,
+            generateSuccess,
+            cooldownReason,
+            cooldownSecondsLeft,
+          }}
+          navigation={
+            currentStep < TOTAL_STEPS ? (
+              <WizardNavigation
+                onNext={handleSaveAndNext}
+                onPrevious={handlePrevious}
+                canGoNext={isValid}
+                canGoPrevious={currentStep > 1}
+                isLastStep={false}
+                isSaving={isSaving}
+              />
+            ) : null
+          }
+        />
       </div>
     </div>
   );

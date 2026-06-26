@@ -1,4 +1,4 @@
-import { useGlobalLoadingStore, selectIsActive } from "./useGlobalLoadingStore";
+import { selectIsActive, useGlobalLoadingStore } from './useGlobalLoadingStore';
 
 /**
  * Diagnostic watchdog for the Global Loading Manager.
@@ -26,9 +26,8 @@ const WARN_AFTER_MS = 30_000;
  * watchdog never throws on exotic environments (tests, polyfilled SSR, etc.).
  */
 function generateIncidentId(): string {
-  const c: Crypto | undefined =
-    typeof globalThis !== "undefined" ? globalThis.crypto : undefined;
-  if (c && typeof c.randomUUID === "function") {
+  const c: Crypto | undefined = typeof globalThis !== 'undefined' ? globalThis.crypto : undefined;
+  if (c && typeof c.randomUUID === 'function') {
     return c.randomUUID();
   }
   const rand = Math.random().toString(36).slice(2, 10);

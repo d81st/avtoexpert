@@ -1,9 +1,32 @@
 import type { NextFunction, Request, Response } from 'express';
-import rateLimit, { type Options } from 'express-rate-limit';
+import rateLimit, { ipKeyGenerator, type Options } from 'express-rate-limit';
 import type { AuthRequest } from '../../common/middleware/auth.js';
 
 const WINDOW_MS = 60_000;
 const LIMIT = 5;
+
+/**
+ * Computes the rate-limit key for a request to the document-generation
+ * endpoint.
+ *
+ * - When the request is authenticated (`auth.creator?.id` is set), the key is
+ *   the creator id (per-user accounting) — returned as-is without an `ip:`
+ *   prefix.
+ * - When the request is unauthenticated, falls back to the client IP wrapped
+ *   in `express-rate-limit`'s {@link ipKeyGenerator} helper. For IPv4 the
+ *   address is returned unchanged; for IPv6 the helper aggregates addresses
+ *   into their `/56` network prefix so that a single client cannot trivially
+ *   bypass the limiter by rotating through addresses within its allocated
+ *   block.
+ *
+ * Exported for direct unit/property testing without booting the Express stack
+ * (see `docGenerationLimiter.property.test.ts`).
+ */
+export const buildKey = (req: Request): string => {
+  const auth = req as AuthRequest;
+  if (auth.creator?.id) return auth.creator.id;
+  return `ip:${ipKeyGenerator(req.ip ?? 'unknown')}`;
+};
 
 /**
  * Per-user rate limiter for the document generation endpoint
@@ -21,10 +44,7 @@ export const docGenerationLimiter = rateLimit({
   limit: LIMIT,
   standardHeaders: true,
   legacyHeaders: false,
-  keyGenerator: (req: Request) => {
-    const auth = req as AuthRequest;
-    return auth.creator?.id ?? `ip:${req.ip ?? 'unknown'}`;
-  },
+  keyGenerator: buildKey,
   handler: (
     _req: Request,
     res: Response,

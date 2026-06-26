@@ -1,18 +1,18 @@
-import { useAdminCreatorsQuery } from "../model/adminQueries";
-import { formatDate } from "@/shared/lib/formatters";
-import { Skeleton } from "@/components/ui/skeleton";
-import { AppAlert } from "@/components/ui/app-alert";
+import { AppAlert } from '@/components/ui/app-alert';
+import { Skeleton } from '@/components/ui/skeleton';
+import { formatDate } from '@/shared/lib/formatters';
+import { useAdminCreatorsQuery } from '../model/adminQueries';
 
 export default function AdminCreatorsTab() {
   const creatorsQuery = useAdminCreatorsQuery();
   const creators = creatorsQuery.data ?? [];
-  const error =
-    creatorsQuery.error instanceof Error ? creatorsQuery.error.message : null;
+  const error = creatorsQuery.error instanceof Error ? creatorsQuery.error.message : null;
 
   if (creatorsQuery.isLoading) {
     return (
       <div className="space-y-3">
         {Array.from({ length: 5 }).map((_, i) => (
+          // biome-ignore lint/suspicious/noArrayIndexKey: static fixed-length loading skeletons never reorder
           <Skeleton key={i} className="h-12 w-full" />
         ))}
       </div>
@@ -20,13 +20,7 @@ export default function AdminCreatorsTab() {
   }
 
   if (error) {
-    return (
-      <AppAlert
-        type="error"
-        message={error}
-        onClose={() => void creatorsQuery.refetch()}
-      />
-    );
+    return <AppAlert type="error" message={error} onClose={() => void creatorsQuery.refetch()} />;
   }
 
   return (
@@ -48,25 +42,19 @@ export default function AdminCreatorsTab() {
         <tbody className="divide-y divide-gray-200">
           {creators.map((creator) => (
             <tr key={creator.id} className="hover:bg-gray-50">
-              <td className="px-4 py-3 text-sm font-medium">
-                {creator.full_name}
-              </td>
+              <td className="px-4 py-3 text-sm font-medium">{creator.full_name}</td>
               <td className="px-4 py-3">
                 <span
                   className={`px-2 py-1 text-xs rounded-full ${
-                    creator.role === "admin"
-                      ? "bg-purple-100 text-purple-800"
-                      : "bg-gray-100 text-gray-800"
+                    creator.role === 'admin'
+                      ? 'bg-purple-100 text-purple-800'
+                      : 'bg-gray-100 text-gray-800'
                   }`}
                 >
-                  {creator.role === "admin"
-                    ? "Админ"
-                    : "Создатель"}
+                  {creator.role === 'admin' ? 'Админ' : 'Создатель'}
                 </span>
               </td>
-              <td className="px-4 py-3 text-sm text-gray-500">
-                {formatDate(creator.created_at)}
-              </td>
+              <td className="px-4 py-3 text-sm text-gray-500">{formatDate(creator.created_at)}</td>
             </tr>
           ))}
         </tbody>

@@ -29,7 +29,7 @@ export const BODY_TYPES = [
   { value: 'Седан', label: 'Седан / Sedan' },
   { value: 'Хэтчбек', label: 'Хэтчбек / Xetchbek' },
   { value: 'Универсал', label: 'Универсал / Universal' },
-  { value: 'Внедорожник (SUV)', label: 'Внедорожник (SUV) / Yo\'l tanlamaydigan' },
+  { value: 'Внедорожник (SUV)', label: "Внедорожник (SUV) / Yo'l tanlamaydigan" },
   { value: 'Кроссовер', label: 'Кроссовер / Krossover' },
   { value: 'Микроавтобус', label: 'Микроавтобус / Mikroavtobus' },
   { value: 'Пикап', label: 'Пикап / Pikap' },
@@ -51,7 +51,7 @@ export const ODOMETER_STATUSES = [
 
 export const PRODUCTION_STATUSES = [
   { value: 'В производстве', label: 'В производстве / Ishlab chiqarilmoqda' },
-  { value: 'Снят с производства', label: 'Снят с производства / Ishlab chiqarish to\'xtatilgan' },
+  { value: 'Снят с производства', label: "Снят с производства / Ishlab chiqarish to'xtatilgan" },
 ] as const;
 
 export const DEPRECIATION_OPTIONS = [90, 91, 92, 93, 94, 95] as const;

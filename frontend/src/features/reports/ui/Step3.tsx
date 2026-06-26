@@ -1,33 +1,28 @@
-import { useEffect } from 'react';
-import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useFormStore } from '../model/useFormStore';
-import { useValidationSync } from '../hooks/useValidationSync';
-import type { Step3Data } from '../types';
-import { step3Schema, type Step3FormData } from '@/schemas/step3.schema';
-import { DEPRECIATION_OPTIONS, PRODUCTION_STATUSES } from '@/constants/reference';
-import {
-  calcAverageAnalogPrice,
-  calcMarketPrice,
-} from '../lib/calculations';
-import { formatSum } from '@/shared/lib/formatters';
+import { memo } from 'react';
+import { type Control, useForm, useWatch } from 'react-hook-form';
 import {
   Form,
+  FormControl,
   FormField,
   FormItem,
   FormLabel,
-  FormControl,
-  FormDescription,
   FormMessage,
 } from '@/components/ui/form';
-import { Input } from '@/components/ui/input';
 import {
   Select,
-  SelectTrigger,
-  SelectValue,
   SelectContent,
   SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from '@/components/ui/select';
+import { DEPRECIATION_OPTIONS, PRODUCTION_STATUSES } from '@/constants/reference';
+import { type Step3FormData, step3Schema } from '@/schemas/step3.schema';
+import { formatSum } from '@/shared/lib/formatters';
+import { useValidationSync } from '../hooks/useValidationSync';
+import { calcAverageAnalogPrice, calcMarketPrice } from '../lib/calculations';
+import { useFormStore } from '../model/useFormStore';
+import { FormStoreSync, IsolatedNumberField } from './fields/isolated-fields';
 
 const EMPTY_STEP3: Step3FormData = {
   production_status: 'В производстве',
@@ -41,6 +36,55 @@ const EMPTY_STEP3: Step3FormData = {
   depreciation_pct: 90,
 };
 
+/**
+ * Auto-calculation summary, isolated into its own memoized subtree.
+ *
+ * It subscribes only to the analog prices and the depreciation percentage through
+ * a scoped `useWatch`, so it re-renders when those change without forcing the rest
+ * of the step (or the input fields) to re-render (R1.3).
+ */
+const Step3Summary = memo(function Step3Summary({ control }: { control: Control<Step3FormData> }) {
+  const [price1, price2, price3, depreciation] = useWatch({
+    control,
+    name: ['analog1_price', 'analog2_price', 'analog3_price', 'depreciation_pct'],
+  });
+
+  const averagePrice = calcAverageAnalogPrice([price1 ?? 0, price2 ?? 0, price3 ?? 0]);
+  const depreciationValue = depreciation ?? 90;
+  const marketPrice =
+    averagePrice !== null ? calcMarketPrice(averagePrice, depreciationValue) : null;
+
+  return (
+    <section className="bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-6">
+      <h3 className="font-semibold text-blue-900 mb-4">Авто-расчёт / Avtomatik hisob</h3>
+      <div className="space-y-3">
+        <div className="flex justify-between items-center bg-white/70 p-3 rounded">
+          <span className="text-gray-700">Средняя цена аналогов / O'rtacha narx</span>
+          <span className="font-bold text-blue-700">{formatSum(averagePrice)}</span>
+        </div>
+        <div className="flex justify-between items-center bg-white/70 p-3 rounded">
+          <span className="text-gray-700">Рыночная стоимость / Bozor qiymati</span>
+          <span className="font-bold text-2xl text-blue-700">{formatSum(marketPrice)}</span>
+        </div>
+      </div>
+    </section>
+  );
+});
+
+function renderAnalog(index: 1 | 2 | 3) {
+  return (
+    <div key={index} className="border border-gray-200 rounded-lg p-4 bg-gray-50">
+      <h4 className="font-medium text-gray-800 mb-3">
+        Аналог {index} / Analog {index}
+      </h4>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <IsolatedNumberField name={`analog${index}_mileage`} label="Пробег (км)" min={0} />
+        <IsolatedNumberField name={`analog${index}_price`} label="Цена (сум)" min={0} />
+      </div>
+    </div>
+  );
+}
+
 function Step3({ onValidationChange }: { onValidationChange: (isValid: boolean) => void }) {
   const step3Data = useFormStore((s) => s.step3);
   const setStep3 = useFormStore((s) => s.setStep3);
@@ -51,87 +95,26 @@ function Step3({ onValidationChange }: { onValidationChange: (isValid: boolean) 
     defaultValues: step3Data ?? EMPTY_STEP3,
   });
 
-  const { control, formState: { isValid } } = form;
-
-  const watchedValues = useWatch({ control });
-
-  // Sync form data with FormStore
-  useEffect(() => {
-    if (watchedValues && Object.keys(watchedValues).length > 0) {
-      setStep3(watchedValues as Step3Data);
-    }
-  }, [watchedValues, setStep3]);
+  const {
+    control,
+    formState: { isValid },
+  } = form;
 
   // Sync validation state via formState.isValid subscription
   useValidationSync(isValid, onValidationChange);
 
-  const averagePrice = calcAverageAnalogPrice([
-    watchedValues.analog1_price ?? 0,
-    watchedValues.analog2_price ?? 0,
-    watchedValues.analog3_price ?? 0,
-  ]);
-  const depreciationValue = watchedValues.depreciation_pct ?? 90;
-  const marketPrice = averagePrice !== null
-    ? calcMarketPrice(averagePrice, depreciationValue)
-    : null;
-
-  const renderAnalog = (index: 1 | 2 | 3) => {
-    const mileageKey = `analog${index}_mileage` as const;
-    const priceKey = `analog${index}_price` as const;
-
-    return (
-      <div key={index} className="border border-gray-200 rounded-lg p-4 bg-gray-50">
-        <h4 className="font-medium text-gray-800 mb-3">Аналог {index} / Analog {index}</h4>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <FormField
-            control={control}
-            name={mileageKey}
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Пробег (км)</FormLabel>
-                <FormControl>
-                  <Input
-                    type="number"
-                    min={0}
-                    value={field.value ?? ''}
-                    onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
-                    onBlur={field.onBlur}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <FormField
-            control={control}
-            name={priceKey}
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Цена (сум)</FormLabel>
-                <FormControl>
-                  <Input
-                    type="number"
-                    min={0}
-                    value={field.value ?? ''}
-                    onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
-                    onBlur={field.onBlur}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        </div>
-      </div>
-    );
-  };
-
   return (
     <Form {...form}>
+      {/* Isolated, debounced Zustand sync — keeps the whole-form watch off this
+          component's render path (R1.3). */}
+      <FormStoreSync control={control} setter={setStep3} />
+
       <div className="space-y-8">
         <div>
           <h2 className="text-2xl font-bold text-gray-800">Шаг 3: Bozor bahosi</h2>
-          <p className="text-sm text-gray-600 mt-2">Определение рыночной стоимости автомобиля до аварии</p>
+          <p className="text-sm text-gray-600 mt-2">
+            Определение рыночной стоимости автомобиля до аварии
+          </p>
         </div>
 
         <section>
@@ -171,25 +154,12 @@ function Step3({ onValidationChange }: { onValidationChange: (isValid: boolean) 
         </section>
 
         <section className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <FormField
-            control={control}
+          <IsolatedNumberField
             name="factory_price"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Цена нового (с завода)</FormLabel>
-                <FormControl>
-                  <Input
-                    type="number"
-                    min={0}
-                    value={field.value ?? ''}
-                    onChange={(e) => field.onChange(parseInt(e.target.value) || undefined)}
-                    onBlur={field.onBlur}
-                  />
-                </FormControl>
-                <FormDescription>Необязательно</FormDescription>
-                <FormMessage />
-              </FormItem>
-            )}
+            label="Цена нового (с завода)"
+            min={0}
+            optional
+            description="Необязательно"
           />
 
           <FormField
@@ -209,7 +179,9 @@ function Step3({ onValidationChange }: { onValidationChange: (isValid: boolean) 
                   </FormControl>
                   <SelectContent>
                     {DEPRECIATION_OPTIONS.map((pct) => (
-                      <SelectItem key={pct} value={String(pct)}>{pct}%</SelectItem>
+                      <SelectItem key={pct} value={String(pct)}>
+                        {pct}%
+                      </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -219,19 +191,7 @@ function Step3({ onValidationChange }: { onValidationChange: (isValid: boolean) 
           />
         </section>
 
-        <section className="bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-6">
-          <h3 className="font-semibold text-blue-900 mb-4">Авто-расчёт / Avtomatik hisob</h3>
-          <div className="space-y-3">
-            <div className="flex justify-between items-center bg-white/70 p-3 rounded">
-              <span className="text-gray-700">Средняя цена аналогов / O'rtacha narx</span>
-              <span className="font-bold text-blue-700">{formatSum(averagePrice)}</span>
-            </div>
-            <div className="flex justify-between items-center bg-white/70 p-3 rounded">
-              <span className="text-gray-700">Рыночная стоимость / Bozor qiymati</span>
-              <span className="font-bold text-2xl text-blue-700">{formatSum(marketPrice)}</span>
-            </div>
-          </div>
-        </section>
+        <Step3Summary control={control} />
       </div>
     </Form>
   );

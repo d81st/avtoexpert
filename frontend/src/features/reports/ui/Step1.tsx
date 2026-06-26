@@ -1,34 +1,34 @@
-import { useEffect } from "react";
-import { useForm, useWatch } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useFormStore } from "../model/useFormStore";
-import { useExperts } from "../hooks/useExperts";
-import { useValidationSync } from "../hooks/useValidationSync";
-import { step1Schema, type Step1FormData } from "@/schemas/step1.schema";
-import { notify } from "@/shared/notifications/notify";
-import ExpertManagerModal from "./ExpertManagerModal";
-import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectTrigger,
-  SelectValue,
-  SelectContent,
-  SelectItem,
-} from "@/components/ui/select";
+import { zodResolver } from '@hookform/resolvers/zod';
+import { useEffect } from 'react';
+import { useForm, useWatch } from 'react-hook-form';
 import {
   Form,
+  FormControl,
   FormField,
   FormItem,
   FormLabel,
-  FormControl,
   FormMessage,
-} from "@/components/ui/form";
+} from '@/components/ui/form';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { type Step1FormData, step1Schema } from '@/schemas/step1.schema';
+import { notify } from '@/shared/notifications/notify';
+import { useExperts } from '../hooks/useExperts';
+import { useValidationSync } from '../hooks/useValidationSync';
+import { useFormStore } from '../model/useFormStore';
+import ExpertManagerModal from './ExpertManagerModal';
+import { FormStoreSync, IsolatedTextField } from './fields/isolated-fields';
 
 const EMPTY_STEP1: Step1FormData = {
-  expert_id: "",
-  report_number: "",
-  report_date: "",
-  application_date: "",
+  expert_id: '',
+  report_number: '',
+  report_date: '',
+  application_date: '',
 };
 
 interface StepFormProps {
@@ -41,13 +41,19 @@ function Step1({ onValidationChange }: StepFormProps) {
 
   const form = useForm<Step1FormData>({
     resolver: zodResolver(step1Schema),
-    mode: "onChange",
+    mode: 'onChange',
     defaultValues: step1Data ?? EMPTY_STEP1,
   });
 
-  const { setValue, control, formState: { isValid } } = form;
+  const {
+    setValue,
+    control,
+    formState: { isValid },
+  } = form;
 
-  const watchedValues = useWatch({ control }) as Step1FormData;
+  // Scoped subscription: only the expert select drives this read, so typing in the
+  // text fields never re-renders the step (R1.3).
+  const selectedExpertId = useWatch({ control, name: 'expert_id' }) ?? '';
 
   const {
     experts,
@@ -67,21 +73,14 @@ function Step1({ onValidationChange }: StepFormProps) {
     handleDeleteExpert,
     openEditExpert,
   } = useExperts({
-    selectedExpertId: watchedValues.expert_id,
+    selectedExpertId,
     onSelectExpert: (id) =>
-      setValue("expert_id", id, {
+      setValue('expert_id', id, {
         shouldDirty: true,
         shouldTouch: true,
         shouldValidate: true,
       }),
   });
-
-  // Sync form data with FormStore
-  useEffect(() => {
-    if (watchedValues && Object.keys(watchedValues).length > 0) {
-      setStep1({ ...EMPTY_STEP1, ...watchedValues });
-    }
-  }, [watchedValues, setStep1]);
 
   // Sync validation state via formState.isValid subscription
   useValidationSync(isValid, onValidationChange);
@@ -99,15 +98,17 @@ function Step1({ onValidationChange }: StepFormProps) {
   return (
     <div>
       <div className="mb-6">
-        <h2 className="text-2xl font-bold text-gray-800">
-          Шаг 1: Основная информация
-        </h2>
+        <h2 className="text-2xl font-bold text-gray-800">Шаг 1: Основная информация</h2>
         <p className="text-sm text-gray-600 mt-2">
           Укажите основные данные для заключения об экспертизе
         </p>
       </div>
 
       <Form {...form}>
+        {/* Isolated, debounced Zustand sync — keeps the whole-form watch off this
+            component's render path (R1.3). */}
+        <FormStoreSync control={control} setter={setStep1} />
+
         <div className="space-y-6 mt-6">
           <FormField
             control={control}
@@ -126,11 +127,7 @@ function Step1({ onValidationChange }: StepFormProps) {
                     + Добавить эксперта
                   </button>
                 </div>
-                <Select
-                  onValueChange={field.onChange}
-                  value={field.value}
-                  disabled={isLoading}
-                >
+                <Select onValueChange={field.onChange} value={field.value} disabled={isLoading}>
                   <FormControl>
                     <SelectTrigger>
                       <SelectValue placeholder="Выберите эксперта из списка" />
@@ -149,56 +146,20 @@ function Step1({ onValidationChange }: StepFormProps) {
             )}
           />
 
-          <FormField
-            control={control}
+          <IsolatedTextField
             name="report_number"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>
-                  Номер заключения <span className="text-red-500">*</span>
-                </FormLabel>
-                <FormControl>
-                  <Input
-                    type="text"
-                    placeholder="Например: 2024-001"
-                    {...field}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
+            label="Номер заключения"
+            required
+            placeholder="Например: 2024-001"
           />
 
-          <FormField
-            control={control}
-            name="report_date"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>
-                  Дата заключения <span className="text-red-500">*</span>
-                </FormLabel>
-                <FormControl>
-                  <Input type="date" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+          <IsolatedTextField name="report_date" label="Дата заключения" required type="date" />
 
-          <FormField
-            control={control}
+          <IsolatedTextField
             name="application_date"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>
-                  Дата подачи заявки <span className="text-red-500">*</span>
-                </FormLabel>
-                <FormControl>
-                  <Input type="date" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
+            label="Дата подачи заявки"
+            required
+            type="date"
           />
         </div>
       </Form>

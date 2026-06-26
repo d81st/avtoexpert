@@ -1,5 +1,5 @@
-import { create } from "zustand";
-import type { Report } from "../types";
+import { create } from 'zustand';
+import type { Report } from '../types';
 
 interface ReportState {
   currentReport: Report | null;

@@ -1,29 +1,58 @@
-import { useState } from "react";
-import { useForm } from "react-hook-form";
-import { useNavigate } from "react-router-dom";
-import { useAdminReportsQuery } from "../model/adminQueries";
-import { formatDate, formatProgress, formatSum } from "@/shared/lib/formatters";
-import { Badge } from "@/components/ui/badge";
-import { getStatusConfig } from "@/lib/status-variants";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
-import { Loader2 } from "lucide-react";
-import { Skeleton } from "@/components/ui/skeleton";
-import { AppAlert } from "@/components/ui/app-alert";
-import { Card, CardContent } from "@/components/ui/card";
+import { Loader2 } from 'lucide-react';
+import { useState } from 'react';
+import { FormProvider, useForm } from 'react-hook-form';
+import { useNavigate } from 'react-router-dom';
+import { AppAlert } from '@/components/ui/app-alert';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Skeleton } from '@/components/ui/skeleton';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import { useIsolatedField } from '@/features/reports/hooks/useIsolatedField';
+import { getStatusConfig } from '@/lib/status-variants';
+import { formatDate, formatProgress, formatSum } from '@/shared/lib/formatters';
+import { useAdminReportsQuery } from '../model/adminQueries';
 
 interface SearchForm {
   search: string;
 }
 
+/**
+ * Isolated search input (Requirement 1.1, 1.3, 1.8).
+ *
+ * Registering through `useIsolatedField` keeps each keystroke confined to this
+ * field's own subtree: the uncontrolled native handler updates the DOM `value`
+ * without a parent `setState`, so typing never re-renders the reports table, the
+ * pagination controls, or the surrounding form buttons.
+ */
+function ReportSearchField() {
+  const field = useIsolatedField<SearchForm>('search');
+  return (
+    <Input
+      type="text"
+      placeholder="Поиск по номеру, госномеру, владельцу..."
+      className="flex-1"
+      {...field}
+    />
+  );
+}
+
 export default function AdminReportsTab() {
   const navigate = useNavigate();
   const [currentPage, setCurrentPage] = useState(1);
-  const [searchQuery, setSearchQuery] = useState("");
-  const { register, handleSubmit, reset } = useForm<SearchForm>({
-    defaultValues: { search: "" },
+  const [searchQuery, setSearchQuery] = useState('');
+  const formMethods = useForm<SearchForm>({
+    defaultValues: { search: '' },
   });
+  const { handleSubmit, reset } = formMethods;
   const reportsQuery = useAdminReportsQuery({
     page: currentPage,
     search: searchQuery || undefined,
@@ -31,8 +60,7 @@ export default function AdminReportsTab() {
   });
   const reports = reportsQuery.data?.data ?? [];
   const pagination = reportsQuery.data?.pagination ?? null;
-  const error =
-    reportsQuery.error instanceof Error ? reportsQuery.error.message : null;
+  const error = reportsQuery.error instanceof Error ? reportsQuery.error.message : null;
 
   const onSearch = handleSubmit(({ search }) => {
     setCurrentPage(1);
@@ -40,15 +68,16 @@ export default function AdminReportsTab() {
   });
 
   const handleClearSearch = () => {
-    reset({ search: "" });
+    reset({ search: '' });
     setCurrentPage(1);
-    setSearchQuery("");
+    setSearchQuery('');
   };
 
   if (reportsQuery.isLoading) {
     return (
       <div className="space-y-3">
         {Array.from({ length: 5 }).map((_, i) => (
+          // biome-ignore lint/suspicious/noArrayIndexKey: static fixed-length loading skeletons never reorder
           <Skeleton key={i} className="h-12 w-full" />
         ))}
       </div>
@@ -56,34 +85,25 @@ export default function AdminReportsTab() {
   }
 
   if (error) {
-    return (
-      <AppAlert
-        type="error"
-        message={error}
-        onClose={() => void reportsQuery.refetch()}
-      />
-    );
+    return <AppAlert type="error" message={error} onClose={() => void reportsQuery.refetch()} />;
   }
 
   return (
     <>
-      <form onSubmit={onSearch} className="mb-6 flex flex-col gap-2 sm:flex-row">
-        <Input
-          type="text"
-          placeholder="Поиск по номеру, госномеру, владельцу..."
-          className="flex-1"
-          {...register("search")}
-        />
-        <Button type="submit" variant="outline" disabled={reportsQuery.isFetching}>
-          {reportsQuery.isFetching && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-          Найти
-        </Button>
-        {searchQuery && (
-          <Button type="button" variant="outline" onClick={handleClearSearch}>
-            Сбросить
+      <FormProvider {...formMethods}>
+        <form onSubmit={onSearch} className="mb-6 flex flex-col gap-2 sm:flex-row">
+          <ReportSearchField />
+          <Button type="submit" variant="outline" disabled={reportsQuery.isFetching}>
+            {reportsQuery.isFetching && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            Найти
           </Button>
-        )}
-      </form>
+          {searchQuery && (
+            <Button type="button" variant="outline" onClick={handleClearSearch}>
+              Сбросить
+            </Button>
+          )}
+        </form>
+      </FormProvider>
 
       {reports.length === 0 ? (
         <Card className="text-center">
@@ -109,9 +129,7 @@ export default function AdminReportsTab() {
             <TableBody>
               {reports.map((report) => (
                 <TableRow key={report.id}>
-                  <TableCell className="font-medium">
-                    {report.reportNumber || "-"}
-                  </TableCell>
+                  <TableCell className="font-medium">{report.reportNumber || '-'}</TableCell>
                   <TableCell className="text-muted-foreground">
                     {formatDate(report.reportDate)}
                   </TableCell>
@@ -121,18 +139,10 @@ export default function AdminReportsTab() {
                       return <Badge variant={variant}>{label}</Badge>;
                     })()}
                   </TableCell>
-                  <TableCell>
-                    {formatProgress(report.currentStep)}
-                  </TableCell>
-                  <TableCell>
-                    {report.licensePlate || "-"}
-                  </TableCell>
-                  <TableCell>
-                    {report.ownerName || "-"}
-                  </TableCell>
-                  <TableCell>
-                    {formatSum(report.grandTotal)}
-                  </TableCell>
+                  <TableCell>{formatProgress(report.currentStep)}</TableCell>
+                  <TableCell>{report.licensePlate || '-'}</TableCell>
+                  <TableCell>{report.ownerName || '-'}</TableCell>
+                  <TableCell>{formatSum(report.grandTotal)}</TableCell>
                   <TableCell>
                     <Button
                       variant="link"

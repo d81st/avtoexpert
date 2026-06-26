@@ -1,7 +1,7 @@
-import type { UseFormRegister } from "react-hook-form";
-import { Loader2 } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Loader2 } from 'lucide-react';
+import type { UseFormRegister } from 'react-hook-form';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 
 /**
  * Shape of the search form managed by `useDashboard`.
@@ -57,7 +57,7 @@ export function DashboardSearchBar({
           type="text"
           placeholder="Поиск по номеру, госномеру, владельцу..."
           data-testid="dashboard-search-input"
-          {...register("search")}
+          {...register('search')}
         />
         {isFetching && (
           <Loader2
